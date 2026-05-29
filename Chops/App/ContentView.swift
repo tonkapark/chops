@@ -37,12 +37,31 @@ struct ContentView: View {
         .sheet(isPresented: $appState.showingRegistrySheet) {
             RegistrySheet()
         }
+        .sheet(isPresented: $appState.showingCommandPalette, onDismiss: runPaletteAction) {
+            CommandPaletteView()
+        }
         .onChange(of: appState.sidebarFilter) {
             appState.toolKindFilter = nil
         }
         .frame(minWidth: 900, minHeight: 500)
         .onReceive(NotificationCenter.default.publisher(for: .customScanPathsChanged)) { _ in
             scanner?.scanAll()
+        }
+    }
+
+    /// Runs the action chosen in the command palette, after that sheet has
+    /// fully dismissed — avoids presenting two sheets simultaneously.
+    private func runPaletteAction() {
+        guard let action = appState.pendingPaletteAction else { return }
+        appState.pendingPaletteAction = nil
+        switch action {
+        case .navigate(let filter):
+            appState.sidebarFilter = filter
+        case .openDiscovery:
+            appState.showingRegistrySheet = true
+        case .newItem(let kind):
+            appState.newItemKind = kind
+            appState.showingNewSkillSheet = true
         }
     }
 
