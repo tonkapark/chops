@@ -5,6 +5,9 @@ struct RegistrySheet: View {
     @State private var registry = SkillRegistry()
     @State private var searchText = ""
     @State private var results: [SkillRegistry.RegistrySkill] = []
+    @State private var trending: [SkillRegistry.RegistrySkill] = []
+    @State private var isLoadingTrending = false
+    @State private var officialOnly = false
     @State private var selectedSkill: SkillRegistry.RegistrySkill?
     @State private var skillContent: String?
     @State private var selectedAgents: Set<String> = []
@@ -18,6 +21,22 @@ struct RegistrySheet: View {
 
     private var installedAgents: [AgentTarget] {
         AgentTarget.installed
+    }
+
+    /// What the list renders: trending when idle, locally-filtered trending plus any
+    /// long-tail API hits when searching. Local matches come first (they're the popular
+    /// ones), API extras fill in skills that aren't in the trending set.
+    private var visibleSkills: [SkillRegistry.RegistrySkill] {
+        let base: [SkillRegistry.RegistrySkill]
+        if searchText.count < 2 {
+            base = trending
+        } else {
+            let local = SkillRegistry.filter(trending, query: searchText)
+            let localIDs = Set(local.map(\.id))
+            let extra = results.filter { !localIDs.contains($0.id) }
+            base = local + extra
+        }
+        return officialOnly ? base.filter { $0.isOfficial == true } : base
     }
 
     var body: some View {
@@ -64,9 +83,10 @@ struct RegistrySheet: View {
             }
         }
         .frame(width: 560, height: 500)
-        .onAppear {
+        .task {
             // Pre-select all installed agents
             selectedAgents = Set(installedAgents.map(\.id))
+            await loadTrending()
         }
         .onDisappear {
             searchTask?.cancel()
@@ -98,28 +118,54 @@ struct RegistrySheet: View {
                 debounceSearch(query: newValue)
             }
 
+            // Browse header: section label + Official filter toggle
+            HStack {
+                Text(searchText.count < 2 ? "Trending" : "Results")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Toggle("Official only", isOn: $officialOnly)
+                    .toggleStyle(.checkbox)
+                    .font(.caption)
+                    .controlSize(.small)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+
             Divider()
 
             // Results
-            if results.isEmpty && (isSearching || searchText.count < 2) {
+            if isLoadingTrending && trending.isEmpty && searchText.count < 2 {
+                Spacer()
+                ProgressView("Loading popular skills…")
+                Spacer()
+            } else if visibleSkills.isEmpty && searchText.count >= 2 && !isSearching {
+                ContentUnavailableView.search(text: searchText)
+                    .frame(maxHeight: .infinity)
+            } else if visibleSkills.isEmpty {
                 ContentUnavailableView {
                     Label("Search the Skills Registry", systemImage: "globe")
                 } description: {
                     Text("Find and install skills from the open agent skills ecosystem.")
                 }
                 .frame(maxHeight: .infinity)
-            } else if results.isEmpty && !isSearching && searchText.count >= 2 {
-                ContentUnavailableView.search(text: searchText)
-                    .frame(maxHeight: .infinity)
             } else {
-                List(results) { skill in
+                List(visibleSkills) { skill in
                     Button {
                         selectSkill(skill)
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(skill.name)
-                                    .fontWeight(.medium)
+                                HStack(spacing: 5) {
+                                    Text(skill.name)
+                                        .fontWeight(.medium)
+                                    if skill.isOfficial == true {
+                                        Image(systemName: "checkmark.seal.fill")
+                                            .font(.caption2)
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
                                 Text(skill.source)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -279,6 +325,14 @@ struct RegistrySheet: View {
     }
 
     // MARK: - Actions
+
+    private func loadTrending() async {
+        guard trending.isEmpty else { return }
+        isLoadingTrending = true
+        // Non-fatal: if scraping fails, the API search path still works.
+        trending = (try? await registry.fetchTrending()) ?? []
+        isLoadingTrending = false
+    }
 
     private func debounceSearch(query: String) {
         searchTask?.cancel()
