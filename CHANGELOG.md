@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Browse Skills now opens to a Trending list of popular skills
+- Faster, broader skill search with an Official-only filter
+
 ## [1.15.0] - 2026-04-28
 
 - AI Assist now drives your installed Claude and Codex CLIs directly — fewer moving parts, more reliable responses
