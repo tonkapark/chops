@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Sparkle
+import AppKit
 
 @main
 struct ChopsApp: App {
@@ -40,10 +41,22 @@ struct ChopsApp: App {
         .commands {
             TextEditingCommands()
             CommandGroup(after: .sidebar) {
+                Button("Toggle Sidebar") {
+                    NSApp.keyWindow?.firstResponder?.tryToPerform(
+                        #selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+                }
+                .keyboardShortcut("b", modifiers: .command)
+
+                Button("Go to Library") {
+                    appState.sidebarFilter = .allSkills
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+
                 Button("Command Palette") {
                     appState.showingCommandPalette = true
                 }
                 .keyboardShortcut("k", modifiers: .command)
+
                 Divider()
             }
             CommandGroup(replacing: .saveItem) {
