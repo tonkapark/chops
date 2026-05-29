@@ -25,25 +25,16 @@ struct SidebarView: View {
         @Bindable var appState = appState
 
         List(selection: $appState.sidebarFilter) {
-            Section("Library") {
-                Label("Skills", systemImage: "doc.text")
-                    .badge(allSkills.filter { $0.itemKind == .skill }.count)
+
+            Section {            
+                Label("Library", systemImage: "doc.text")
+                    .badge(allSkills.count)
                     .tag(SidebarFilter.allSkills)
-
-                Label("Agents", systemImage: "person.crop.rectangle")
-                    .badge(allSkills.filter { $0.itemKind == .agent }.count)
-                    .tag(SidebarFilter.allAgents)
-
-                Label("Rules", systemImage: "list.bullet.rectangle")
-                    .badge(allSkills.filter { $0.itemKind == .rule }.count)
-                    .tag(SidebarFilter.allRules)
 
                 Label("Favorites", systemImage: "star")
                     .badge(allSkills.filter(\.isFavorite).count)
                     .tag(SidebarFilter.favorites)
-            }
-
-            Section("Tools") {
+          
                 ForEach(activeSources) { tool in
                     Label {
                         Text(tool.displayName)
@@ -110,6 +101,15 @@ struct SidebarView: View {
 
             Section("Collections") {
                 CollectionListView()
+            }
+
+            Section {
+                Button {
+                    appState.showingRegistrySheet = true
+                } label: {
+                    Label("Discovery", systemImage: "safari")
+                }
+                .buttonStyle(.plain)               
             }
         }
         .listStyle(.sidebar)
