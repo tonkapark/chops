@@ -3,7 +3,7 @@
 A major re-write of skills registry browsing after 1.15.0
 
 **Instant browse on open**
-  - Opening Browse Skills now lands on a populated Trending list instead of a blank "Search the registry" placeholder
+  - Opening Discovery browse registry modal now lands on a populated Trending list instead of a blank "Search the registry" placeholder
   - Shows ~600 skills ranked by install count, scraped once from skills.sh's trending page (no API key required)
 
 **Fast, broader local search**
