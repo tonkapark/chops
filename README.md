@@ -28,8 +28,32 @@ One macOS app to discover, organize, and edit coding agent skills and agents acr
 - **Full-text search** — Search across name, description, and content
 - **Create new skills & agents** — Generates correct boilerplate per tool
 - **Remote servers** — Connect to servers running [OpenClaw](https://openclaw.ai), [Hermes](https://github.com/NousResearch/hermes-agent), or other layouts to discover, browse, and install skills
+- **Skills Discovery** — Browse, search, and install skills directly from the [skills.sh registry](https://skills.sh)
 
-## Prerequisites
+## Supported Tools
+
+Chops scans these directories for skills and agents:
+
+| Tool | Skills | Agents |
+|------|--------|--------|
+| Global | `~/.agents/skills/` | — |
+| Claude Code | `~/.claude/skills/` | `~/.claude/agents/` |
+| Cursor | `~/.cursor/skills/`, `~/.cursor/rules` | `~/.cursor/agents/` |
+| Windsurf | `~/.codeium/windsurf/memories/`, `~/.windsurf/rules` | — |
+| Codex | `~/.codex/skills/` | `~/.codex/agents/` |
+| Amp | `~/.config/amp/skills/` | — |
+
+Copilot and Aider are also supported but only detect project-level skills and agents (no global paths). Custom scan paths can be added for any tool.
+
+Tool definitions live in `Chops/Models/ToolSource.swift` — each enum case knows its display name, icon, color, and filesystem paths.
+
+---
+
+## Running from source
+
+Build and run Chops locally with the steps below. End users can [download the latest release](https://github.com/Shpigford/chops/releases/latest/download/Chops.dmg) instead.
+
+### Prerequisites
 
 - **macOS 15** (Sequoia) or later
 - **Xcode** with command-line tools (`xcode-select --install`)
@@ -38,7 +62,7 @@ One macOS app to discover, organize, and edit coding agent skills and agents acr
 
 Sparkle (auto-update framework) is the only external dependency and is pulled automatically by Xcode via Swift Package Manager. No manual setup needed.
 
-## Quick Start
+### Quick Start
 
 ```bash
 git clone https://github.com/Shpigford/chops.git
@@ -58,7 +82,11 @@ Then hit **Cmd+R** to build and run.
 xcodebuild -scheme Chops -configuration Debug build
 ```
 
-## Project Structure
+## Contributing
+
+Want to change the app? The sections below cover project layout, architecture, and common tasks.
+
+### Project Structure
 
 ```
 Chops/
@@ -91,11 +119,11 @@ scripts/             # Release pipeline (release.sh)
 site/                # Marketing website (Astro 6)
 ```
 
-## Architecture
+### Architecture
 
 **SwiftUI + SwiftData**, native macOS with zero web views.
 
-### App lifecycle
+#### App lifecycle
 
 1. `ChopsApp` initializes a SwiftData `ModelContainer` (persists `Skill` and `SkillCollection`)
 2. Sparkle updater starts in the background
@@ -104,60 +132,43 @@ site/                # Marketing website (Astro 6)
 5. `SkillScanner` probes all tool directories and upserts discovered skills
 6. `FileWatcher` attaches FSEvents listeners — on any change, the scanner re-runs automatically
 
-### Key design decisions
+#### Key design decisions
 
 - **No sandbox.** The app needs unrestricted filesystem access to read dotfiles across `~/`. This is intentional and required for core functionality. The entitlements file explicitly disables the app sandbox.
 - **Dedup via symlinks.** Skills are uniquely identified by their resolved symlink path. If the same file is symlinked into multiple tool directories, it shows up as one skill with multiple tool badges.
 - **No test suite.** Validate changes manually — build, run, trigger the feature you changed, observe the result.
 
-### State management
+#### State management
 
 `AppState` is an `@Observable` class that holds all UI state: selected tool filter, selected skill, search text, sidebar filter mode. It's injected via `@Environment` and accessible from any view.
 
-### UI layout
+#### UI layout
 
 Three-column `NavigationSplitView`:
 - **Sidebar** — tool filters and collections
 - **List** — filtered/searched skill list
 - **Detail** — skill editor (wraps `NSTextView` for native text editing with Cmd+S save)
 
-## Supported Tools
+### Common Dev Tasks
 
-Chops scans these directories for skills and agents:
-
-| Tool | Skills | Agents |
-|------|--------|--------|
-| Claude Code | `~/.claude/skills/` | `~/.claude/agents/` |
-| Cursor | `~/.cursor/skills/`, `~/.cursor/rules` | `~/.cursor/agents/` |
-| Windsurf | `~/.codeium/windsurf/memories/`, `~/.windsurf/rules` | — |
-| Codex | `~/.codex/skills/` | `~/.codex/agents/` |
-| Amp | `~/.config/amp/skills/` | — |
-| Global | `~/.agents/skills/` | — |
-
-Copilot and Aider are also supported but only detect project-level skills and agents (no global paths). Custom scan paths can be added for any tool.
-
-Tool definitions live in `Chops/Models/ToolSource.swift` — each enum case knows its display name, icon, color, and filesystem paths.
-
-## Common Dev Tasks
-
-### Add support for a new tool
+#### Add support for a new tool
 
 1. Add a new case to the `ToolSource` enum in `Chops/Models/ToolSource.swift`
 2. Fill in `displayName`, `iconName`, `color`, and `globalPaths`
 3. Optionally add a logo to the asset catalog and return it from `logoAssetName`
 4. Update `SkillScanner` if the new tool uses a non-standard file layout
 
-### Modify skill parsing
+#### Modify skill parsing
 
 - **Frontmatter (`.md`)** — edit `Chops/Utilities/FrontmatterParser.swift`
 - **Cursor `.mdc` files** — edit `Chops/Utilities/MDCParser.swift`
 - **Dispatch logic** — edit `Chops/Services/SkillParser.swift` (decides which parser to use)
 
-### Change the UI
+#### Change the UI
 
 Views are in `Chops/Views/`, organized by column (Sidebar, Detail) and shared components. The main layout is in `Chops/App/ContentView.swift`.
 
-## Testing
+### Testing
 
 No automated test suite. Validate manually:
 
@@ -165,6 +176,10 @@ No automated test suite. Validate manually:
 2. Trigger the exact feature you changed
 3. Observe the result — check for correct behavior and error messages
 4. Test edge cases (empty states, missing directories, malformed files)
+
+### AI Agent Setup
+
+This repo includes a Claude Code skill at `.claude/skills/setup.md` that gives AI coding agents full context on the project — architecture, key files, and common tasks. If you're using Claude Code, it'll pick this up automatically.
 
 ## Website
 
@@ -176,10 +191,6 @@ npm install      # first time only
 npm run dev      # local dev server
 npm run build    # production build → site/dist/
 ```
-
-## AI Agent Setup
-
-This repo includes a Claude Code skill at `.claude/skills/setup.md` that gives AI coding agents full context on the project — architecture, key files, and common tasks. If you're using Claude Code, it'll pick this up automatically.
 
 ## License
 
