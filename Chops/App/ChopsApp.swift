@@ -71,8 +71,10 @@ struct ChopsApp: App {
             }
             // Close Window in the Window menu, next to "Remove Window from Set".
             CommandGroup(after: .windowSize) {
-                Button("Close Window") {
+                Button {
                     NSApp.keyWindow?.performClose(nil)
+                } label: {
+                    Label("Close Window", systemImage: "xmark")
                 }
                 .keyboardShortcut("w", modifiers: .command)
             }
