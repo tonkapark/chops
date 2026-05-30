@@ -50,6 +50,7 @@ extension ToolSource {
         case .pi: "PI"
         case .agents: "AG"
         case .antigravity: "AV"
+        case .factory: "FA"
         case .claudeDesktop: "CD"
         case .custom: "?"
         }

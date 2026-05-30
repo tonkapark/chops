@@ -15,6 +15,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
     case opencode
     case pi
     case antigravity
+    case factory
     case claudeDesktop
     case custom
 
@@ -46,6 +47,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: "Pi"
         case .agents: "Global"
         case .antigravity: "Antigravity"
+        case .factory: "Factory"
         case .claudeDesktop: "Claude Desktop"
         case .custom: "Custom"
         }
@@ -68,6 +70,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: "sparkles"
         case .agents: "globe"
         case .antigravity: "arrow.up.circle"
+        case .factory: "gearshape.2"
         case .claudeDesktop: "desktopcomputer"
         case .custom: "folder"
         }
@@ -84,6 +87,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .copilot: "tool-copilot"
         case .amp: "tool-amp"
         case .antigravity: "tool-antigravity"
+        case .factory: "tool-factory"
         case .claudeDesktop: "tool-claude"
         case .opencode: "tool-opencode"
         default: nil
@@ -106,6 +110,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: .cyan
         case .agents: .mint
         case .antigravity: .red
+        case .factory: .indigo
         case .claudeDesktop: .orange
         case .custom: .gray
         }
@@ -117,6 +122,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .claude: return ["\(home)/.claude/agents"]
         case .cursor: return ["\(home)/.cursor/agents"]
         case .codex: return ["\(home)/.codex/agents"]
+        case .factory: return ["\(home)/.factory/droids"]
         default: return []
         }
     }
@@ -178,6 +184,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: return ["\(home)/.pi/agent/skills"]
         case .agents: return ["\(home)/.agents/skills"]
         case .antigravity: return ["\(home)/.gemini/antigravity/skills"]
+        case .factory: return ["\(home)/.factory/skills"]
         case .claudeDesktop: return []
         case .custom: return []
         }
@@ -254,6 +261,9 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .hermes:
             return fm.fileExists(atPath: "\(home)/.hermes")
                 || Self.cliBinaryExists("hermes")
+        case .factory:
+            return fm.fileExists(atPath: "\(home)/.factory")
+                || Self.cliBinaryExists("droid")
         case .aider, .custom:
             return true
         }

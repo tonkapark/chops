@@ -62,6 +62,10 @@ final class SkillScanner {
         (".config/amp/skills", .amp, .skill),
         (".opencode/skills", .opencode, .skill),
         (".hermes/skills", .hermes, .skill),
+        (".factory/skills", .factory, .skill),
+        (".factory/droids", .factory, .agent),
+        // Note: .factory/commands is intentionally unsupported — Factory's docs
+        // recommend skills over slash commands.
     ]
 
     func scanAll() {

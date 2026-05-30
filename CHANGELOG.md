@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Add Factory (Droid CLI) as a tool source — discovers Factory skills (`~/.factory/skills/`) and droids as agents (`~/.factory/droids/`)
+
 ## [1.15.0] - 2026-04-28
 
 - AI Assist now drives your installed Claude and Codex CLIs directly — fewer moving parts, more reliable responses
