@@ -62,7 +62,7 @@ struct SkillListView: View {
 
     private var title: String {
         switch appState.sidebarFilter {
-        case .allSkills: "Skills"
+        case .allSkills: "Library"
         case .favorites: "Favorites"
         case .tool(let tool): tool.displayName
         case .collection(let name): name
@@ -94,8 +94,8 @@ struct SkillListView: View {
                 description: Text("No \(kind.displayName.lowercased()) match the current filter.")
             )
         } else {
-            ContentUnavailableView("No Skills", systemImage: "doc.text",
-                description: Text("No skills match the current filter."))
+            ContentUnavailableView("No Items", systemImage: "doc.text",
+                description: Text("No items match the current filter."))
         }
     }
 

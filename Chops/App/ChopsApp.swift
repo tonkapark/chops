@@ -1,7 +1,6 @@
 import SwiftUI
 import SwiftData
 import Sparkle
-import AppKit
 
 @main
 struct ChopsApp: App {
@@ -42,8 +41,7 @@ struct ChopsApp: App {
             TextEditingCommands()
             CommandGroup(after: .sidebar) {
                 Button("Toggle Sidebar") {
-                    NSApp.keyWindow?.firstResponder?.tryToPerform(
-                        #selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+                    NotificationCenter.default.post(name: .toggleSidebar, object: nil)
                 }
                 .keyboardShortcut("b", modifiers: .command)
 

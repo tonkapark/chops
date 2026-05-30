@@ -47,6 +47,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .customScanPathsChanged)) { _ in
             scanner?.scanAll()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
+            columnVisibility = columnVisibility == .doubleColumn ? .all : .doubleColumn
+        }
     }
 
     /// Runs the action chosen in the command palette, after that sheet has

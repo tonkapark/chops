@@ -9,9 +9,10 @@ final class SkillRegistry {
     private var treeCache: [String: [String]] = [:] // source@branch -> [SKILL.md paths]
     private var branchCache: [String: String] = [:] // source -> default branch
 
-    // Popular/trending skills, scraped from skills.sh. Cached in memory for the session
-    // and on disk (with a TTL) so it survives app relaunches.
-    private var trendingCache: [RegistrySkill]?
+    // Popular/trending skills, scraped from skills.sh. Cached in memory process-wide
+    // (static, so it survives sheet re-presentations) and on disk, both with a TTL,
+    // so it survives app relaunches without re-scraping.
+    private static var trendingCache: (skills: [RegistrySkill], fetchedAt: Date)?
 
     private static let trendingTTL: TimeInterval = 6 * 60 * 60 // 6 hours
 
@@ -76,13 +77,16 @@ final class SkillRegistry {
     /// ranked by install count — is cached for the session and powers instant local
     /// browse + filtering, which is both faster and broader than the fuzzy search API.
     func fetchTrending() async throws -> [RegistrySkill] {
-        if let cached = trendingCache { return cached }
+        if let cached = Self.trendingCache,
+           Date().timeIntervalSince(cached.fetchedAt) < Self.trendingTTL {
+            return cached.skills
+        }
 
         // Reuse a fresh on-disk cache so trending shows instantly on relaunch and we
         // don't re-scrape skills.sh on every cold start.
         if let disk = Self.readTrendingDiskCache(),
            Date().timeIntervalSince(disk.fetchedAt) < Self.trendingTTL {
-            trendingCache = disk.skills
+            Self.trendingCache = (disk.skills, disk.fetchedAt)
             return disk.skills
         }
 
@@ -100,8 +104,11 @@ final class SkillRegistry {
         }
 
         let skills = Self.parseTrending(html: html)
-        guard !skills.isEmpty else { throw RegistryError.searchFailed }
-        trendingCache = skills
+        guard !skills.isEmpty else {
+            AppLogger.scanning.error("Trending scrape parsed 0 skills — skills.sh markup likely changed")
+            throw RegistryError.searchFailed
+        }
+        Self.trendingCache = (skills, Date())
         Self.writeTrendingDiskCache(skills)
         return skills
     }
@@ -133,12 +140,19 @@ final class SkillRegistry {
         let decoder = JSONDecoder()
         var seen = Set<String>()
         var result: [RegistrySkill] = []
+        var dropped = 0
         for match in unescaped.matches(of: pattern) {
             let json = String(match.output)
-            guard let skill = try? decoder.decode(RegistrySkill.self, from: Data(json.utf8)) else { continue }
+            guard let skill = try? decoder.decode(RegistrySkill.self, from: Data(json.utf8)) else {
+                dropped += 1
+                continue
+            }
             if seen.insert(skill.id).inserted {
                 result.append(skill)
             }
+        }
+        if dropped > 0 {
+            AppLogger.scanning.warning("Trending: dropped \(dropped) unparseable skill fragment(s)")
         }
         return result
     }

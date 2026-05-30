@@ -7,6 +7,7 @@ struct RegistrySheet: View {
     @State private var results: [SkillRegistry.RegistrySkill] = []
     @State private var trending: [SkillRegistry.RegistrySkill] = []
     @State private var isLoadingTrending = false
+    @State private var trendingError: String?
     @State private var officialOnly = false
     @State private var selectedSkill: SkillRegistry.RegistrySkill?
     @State private var skillContent: String?
@@ -143,6 +144,17 @@ struct RegistrySheet: View {
             } else if visibleSkills.isEmpty && searchText.count >= 2 && !isSearching {
                 ContentUnavailableView.search(text: searchText)
                     .frame(maxHeight: .infinity)
+            } else if trendingError != nil && trending.isEmpty && searchText.count < 2 {
+                ContentUnavailableView {
+                    Label("Couldn't load trending skills", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text("Check your connection, or search the registry directly.")
+                } actions: {
+                    Button("Retry") {
+                        Task { await loadTrending() }
+                    }
+                }
+                .frame(maxHeight: .infinity)
             } else if visibleSkills.isEmpty {
                 ContentUnavailableView {
                     Label("Search the Skills Registry", systemImage: "globe")
@@ -329,8 +341,13 @@ struct RegistrySheet: View {
     private func loadTrending() async {
         guard trending.isEmpty else { return }
         isLoadingTrending = true
-        // Non-fatal: if scraping fails, the API search path still works.
-        trending = (try? await registry.fetchTrending()) ?? []
+        trendingError = nil
+        // Search stays available even if trending fails; surface the failure explicitly.
+        do {
+            trending = try await registry.fetchTrending()
+        } catch {
+            trendingError = error.localizedDescription
+        }
         isLoadingTrending = false
     }
 
