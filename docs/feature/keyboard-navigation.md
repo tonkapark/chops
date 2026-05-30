@@ -46,6 +46,14 @@ sheet it opens.
 | ⌘B | Toggle the sidebar |
 | ⌘⇧L | Go to Library |
 | ⌘S | Save the current skill (disabled when nothing is selected) |
+| ⌘, | Open Settings |
+
+⌘, opens the standard macOS **Settings** window (a separate window, not a modal
+sheet). It is provided automatically by SwiftUI's `Settings` scene and listed as
+**Settings…** under the **Chops** app menu — no custom binding is needed. The
+window opens with the section tab bar focused, so **← / →** switch sections
+(General, Library, AI Assist, Scan Directories, Servers, About) without reaching
+for the mouse.
 
 Standard macOS text-editing shortcuts (⌘C/⌘V/⌘Z, etc.) apply in the editor.
 

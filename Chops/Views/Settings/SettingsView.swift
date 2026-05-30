@@ -44,10 +44,12 @@ struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .general
     @State private var customPaths: [String] = []
     @AppStorage("defaultTool") private var defaultTool: ToolSource = .claude
+    @FocusState private var navFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab bar
+            // Tab bar — focused on open so the keyboard can drive navigation
+            // immediately; ←/→ move between sections.
             HStack(spacing: 1) {
                 ForEach(SettingsTab.allCases) { tab in
                     SettingsTabButton(tab: tab, isSelected: selectedTab == tab) {
@@ -58,6 +60,13 @@ struct SettingsView: View {
             .padding(.horizontal, 12)
             .padding(.top, 8)
             .padding(.bottom, 4)
+            .focusable()
+            .focused($navFocused)
+            .focusEffectDisabled()
+            .onKeyPress(.leftArrow) { selectAdjacentTab(-1) }
+            .onKeyPress(.rightArrow) { selectAdjacentTab(1) }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Settings sections")
 
             Divider()
 
@@ -67,9 +76,21 @@ struct SettingsView: View {
         }
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
+        .defaultFocus($navFocused, true)
         .onAppear {
             loadCustomPaths()
         }
+    }
+
+    /// Move the selection one tab left/right, clamped at the ends. Returns
+    /// `.handled` so the arrow key never falls through to scroll the window.
+    private func selectAdjacentTab(_ direction: Int) -> KeyPress.Result {
+        let tabs = SettingsTab.allCases
+        guard let current = tabs.firstIndex(of: selectedTab) else { return .ignored }
+        let target = current + direction
+        guard tabs.indices.contains(target) else { return .handled }
+        selectedTab = tabs[target]
+        return .handled
     }
 
     @ViewBuilder
