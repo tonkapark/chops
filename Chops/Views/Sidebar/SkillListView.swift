@@ -4,6 +4,7 @@ import SwiftData
 struct SkillListView: View {
     private enum ActiveAlert: Identifiable {
         case confirmDelete(Skill)
+        case confirmDeleteMultiple([Skill])
         case confirmMakeGlobal(Skill)
         case deleteError(String)
         case makeGlobalError(String)
@@ -12,6 +13,8 @@ struct SkillListView: View {
             switch self {
             case .confirmDelete(let skill):
                 return "confirm-delete-\(skill.filePath)"
+            case .confirmDeleteMultiple(let skills):
+                return "confirm-delete-multiple-\(skills.map(\.filePath).sorted().joined(separator: "|"))"
             case .confirmMakeGlobal(let skill):
                 return "confirm-make-global-\(skill.filePath)"
             case .deleteError(let message):
@@ -100,7 +103,16 @@ struct SkillListView: View {
     }
 
     @ViewBuilder
-    private func contextMenu(for skill: Skill) -> some View {
+    private func contextMenu(for skills: Set<Skill>) -> some View {
+        if skills.count == 1, let skill = skills.first {
+            singleContextMenu(for: skill)
+        } else if skills.count > 1 {
+            multiContextMenu(for: skills)
+        }
+    }
+
+    @ViewBuilder
+    private func singleContextMenu(for skill: Skill) -> some View {
         Button(skill.isFavorite ? "Unfavorite" : "Favorite") {
             skill.isFavorite.toggle()
             try? modelContext.save()
@@ -143,6 +155,48 @@ struct SkillListView: View {
         }
     }
 
+    /// Bulk actions for a multi-selection. No "Show in Finder" — that targets a
+    /// single file and is meaningless for many.
+    @ViewBuilder
+    private func multiContextMenu(for skills: Set<Skill>) -> some View {
+        let allFavorite = skills.allSatisfy(\.isFavorite)
+        Button(allFavorite ? "Unfavorite \(skills.count) Items" : "Favorite \(skills.count) Items") {
+            for skill in skills { skill.isFavorite = !allFavorite }
+            try? modelContext.save()
+        }
+        if !allCollections.isEmpty {
+            Menu("Collections") {
+                ForEach(allCollections) { collection in
+                    let allAssigned = skills.allSatisfy { skill in
+                        skill.collections.contains { $0.name == collection.name }
+                    }
+                    Button {
+                        for skill in skills {
+                            let isAssigned = skill.collections.contains { $0.name == collection.name }
+                            if allAssigned {
+                                skill.collections.removeAll { $0.name == collection.name }
+                            } else if !isAssigned {
+                                skill.collections.append(collection)
+                            }
+                        }
+                        try? modelContext.save()
+                    } label: {
+                        Toggle(isOn: .constant(allAssigned)) {
+                            Label(collection.name, systemImage: collection.icon)
+                        }
+                    }
+                }
+            }
+        }
+        let deletable = skills.filter { !$0.isReadOnly }
+        if !deletable.isEmpty {
+            Divider()
+            Button("Delete \(deletable.count) Items", role: .destructive) {
+                activeAlert = .confirmDeleteMultiple(Array(deletable))
+            }
+        }
+    }
+
     private func makeSkillGlobal(_ skill: Skill) {
         do {
             try skill.makeGlobal()
@@ -156,9 +210,7 @@ struct SkillListView: View {
         guard !skill.isReadOnly else { return }
         do {
             try skill.deleteFromDisk()
-            if appState.selectedSkill == skill {
-                appState.selectedSkill = nil
-            }
+            appState.selectedSkills.remove(skill)
             modelContext.delete(skill)
             try modelContext.save()
         } catch {
@@ -166,16 +218,35 @@ struct SkillListView: View {
         }
     }
 
+    private func deleteSkills(_ skills: [Skill]) {
+        var firstError: String?
+        for skill in skills where !skill.isReadOnly {
+            do {
+                try skill.deleteFromDisk()
+                appState.selectedSkills.remove(skill)
+                modelContext.delete(skill)
+            } catch {
+                if firstError == nil { firstError = error.localizedDescription }
+            }
+        }
+        try? modelContext.save()
+        if let firstError {
+            activeAlert = .deleteError(firstError)
+        }
+    }
+
     var body: some View {
         @Bindable var appState = appState
 
-        List(selection: $appState.selectedSkill) {
+        List(selection: $appState.selectedSkills) {
             ForEach(filteredSkills) { skill in
                 SkillRow(skill: skill, showTypeBadge: showsTypeBadge)
                     .tag(skill)
                     .draggable(skill.resolvedPath)
-                    .contextMenu { contextMenu(for: skill) }
             }
+        }
+        .contextMenu(forSelectionType: Skill.self) { skills in
+            contextMenu(for: skills)
         }
         .navigationTitle(title)
         .toolbar {
@@ -260,6 +331,15 @@ struct SkillListView: View {
                     },
                     secondaryButton: .cancel()
                 )
+            case .confirmDeleteMultiple(let skills):
+                return Alert(
+                    title: Text("Delete \(skills.count) Items?"),
+                    message: Text("This will permanently delete \(skills.count) items from disk."),
+                    primaryButton: .destructive(Text("Delete")) {
+                        deleteSkills(skills)
+                    },
+                    secondaryButton: .cancel()
+                )
             case .deleteError(let message):
                 return Alert(
                     title: Text("Delete Failed"),
@@ -278,10 +358,13 @@ struct SkillListView: View {
             if filteredSkills.isEmpty { emptyStateView }
         }
         .onChange(of: appState.sidebarFilter) {
-            if let selected = appState.selectedSkill, filteredSkills.contains(selected) {
-                // Already selected something valid in this filter
-            } else {
+            // Drop any selection that isn't in the new filter; if nothing valid
+            // survives, fall back to the first row.
+            let surviving = appState.selectedSkills.filter { filteredSkills.contains($0) }
+            if surviving.isEmpty {
                 appState.selectedSkill = filteredSkills.first
+            } else if surviving != appState.selectedSkills {
+                appState.selectedSkills = surviving
             }
         }
     }

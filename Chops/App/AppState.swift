@@ -3,7 +3,14 @@ import SwiftUI
 @Observable
 final class AppState {
     var selectedTool: ToolSource?
-    var selectedSkill: Skill?
+    /// Source of truth for list selection — supports shift/⌘-click multi-select.
+    var selectedSkills: Set<Skill> = []
+    /// Single-selection bridge for the detail pane and Save command: non-nil only
+    /// when exactly one skill is selected.
+    var selectedSkill: Skill? {
+        get { selectedSkills.count == 1 ? selectedSkills.first : nil }
+        set { selectedSkills = newValue.map { [$0] } ?? [] }
+    }
     var searchText: String = ""
     var showingNewSkillSheet: Bool = false
     var showingRegistrySheet: Bool = false

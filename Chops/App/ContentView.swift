@@ -19,6 +19,12 @@ struct ContentView: View {
         } detail: {
             if let skill = appState.selectedSkill {
                 SkillDetailView(skill: skill)
+            } else if appState.selectedSkills.count > 1 {
+                ContentUnavailableView(
+                    "\(appState.selectedSkills.count) Items Selected",
+                    systemImage: "checklist",
+                    description: Text("Right-click the selection to favorite, add to a collection, or delete.")
+                )
             } else {
                 ContentUnavailableView(
                     "Select a Skill",
