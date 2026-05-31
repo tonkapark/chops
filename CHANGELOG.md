@@ -7,6 +7,7 @@
 - New ⌘K command palette to jump to any tool's library, browse the registry, or create a skill/agent/rule
 - Simplified sidebar: a single unified Library, a Discovery entry, and a cleaner tool list
 - Added keyboard shortcuts: ⌘B to toggle the sidebar and ⌘⇧L to jump to Library
+- Select multiple skills with shift/⌘-click to favorite, add to a collection, or delete them in bulk
 
 ## [1.15.0] - 2026-04-28
 
