@@ -191,7 +191,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .opencode: return ["\(configHome)/opencode/skills"]
         case .pi: return ["\(home)/.pi/agent/skills"]
         case .agents: return ["\(home)/.agents/skills"]
-        case .antigravity: return ["\(home)/.gemini/antigravity/skills"]
+        case .antigravity: return ["\(home)/.gemini/antigravity/skills", "\(home)/.gemini/config/skills"]
         case .factory: return ["\(home)/.factory/skills"]
         case .claudeDesktop: return []
         case .custom: return []
@@ -273,7 +273,9 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .factory:
             return fm.fileExists(atPath: "\(home)/.factory")
                 || Self.cliBinaryExists("droid")
-        case .aider, .custom:
+        case .aider:
+            return Self.cliBinaryExists("aider")
+        case .custom:
             return true
         }
     }
