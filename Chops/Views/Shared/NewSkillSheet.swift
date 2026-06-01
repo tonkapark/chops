@@ -14,9 +14,12 @@ struct NewSkillSheet: View {
     private var creatableTools: [ToolSource] {
         switch itemKind {
         case .skill:
-            return [.agents, .amp, .antigravity, .claude, .codex, .cursor, .factory, .opencode, .pi, .windsurf]
+            return [.agents, .amp, .antigravity, .augment, .claude, .codex, .copilot, .cursor, .factory, .opencode, .pi, .windsurf]
         case .agent:
-            return ToolSource.allCases.filter { !$0.globalAgentPaths.isEmpty }
+            // Codex is intentionally excluded: it has no standalone agent-file
+            // format upstream (subagents live inside a skill as agents/openai.yaml),
+            // even though ~/.codex/agents is still scanned.
+            return [.augment, .claude, .cursor, .factory]
         case .rule:
             return ToolSource.allCases.filter { !$0.globalRulePaths.isEmpty }
         }

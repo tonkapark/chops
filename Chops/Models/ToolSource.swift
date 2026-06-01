@@ -131,7 +131,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
     /// Agents stored as top-level `.md` files in `globalAgentPaths`, not one subfolder per agent.
     var usesFlatAgentFiles: Bool {
         switch self {
-        case .factory: return true
+        case .factory, .augment, .claude, .cursor: return true
         default: return false
         }
     }
@@ -192,7 +192,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .opencode: return ["\(configHome)/opencode/skills"]
         case .pi: return ["\(home)/.pi/agent/skills"]
         case .agents: return ["\(home)/.agents/skills"]
-        case .antigravity: return ["\(home)/.gemini/antigravity/skills", "\(home)/.gemini/config/skills"]
+        case .antigravity: return ["\(home)/.gemini/config/skills", "\(home)/.gemini/antigravity/skills"]
         case .factory: return ["\(home)/.factory/skills", "\(home)/.factory/commands"]
         case .claudeDesktop: return []
         case .custom: return []

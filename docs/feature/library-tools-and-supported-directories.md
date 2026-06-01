@@ -82,6 +82,7 @@ Open standard single command to install, remove, update skill files
 - **SkillScan:** `~/.claude/skills`, `.claude/skills`
 - **AgentScan:**  `~/.claude/agents`, `.claude/agents`
 - **CreateSkill** `~/.claude/skills/<name>/SKILL.md`
+- **CreateAgent:** `~/.claude/agents/<name>.md`
 - **PluginScan:** optional scan from `~/.claude/plugins/installed_plugins.json` → `installPath/skills`
 - **Docs:** <https://code.claude.com/docs/en/skills>
 - **SupportsOpenStandardDiscovery:** false
@@ -119,7 +120,6 @@ Open standard single command to install, remove, update skill files
 - **SkillScan:** `~/.codex/skills`, `.codex/skills`
 - **AgentScan:** `~/.codex/agents`, `.codex/agents`
 - **CreateSkill:** `~/.codex/skills/<name>/SKILL.md`
-- **CreateAgent:** `~/.codex/agents/<name>.toml`
 - **Docs:** <https://developers.openai.com/codex/skills>
 - **SupportsOpenStandardDiscovery:** true
 
@@ -139,7 +139,7 @@ Open standard single command to install, remove, update skill files
 - **Detect:** `~/.copilot` or `copilot`
 - **SkillScan:** `~/.copilot/skills`, `.github/skills`
 - **AgentScan:** `.github/agents`
-- **CreateSkill:** `~/.github/skills`
+- **CreateSkill:** `~/.copilot/skills`
 - **Docs:** <https://docs.github.com/en/copilot>
 - **SupportsOpenStandardDiscovery:** true
 
@@ -269,7 +269,7 @@ Symlinked directories are resolved and traversed. Skills are de-duplicated by re
 
 The `Created` column in [Tool Registry](#tool-registry) is the current source of truth for which tools appear in the new-item sheet.
 
-Chops creates subdirectory-style agents for Claude Code, Cursor, and Codex, even though the scanner accepts loose agent files too. Factory droids are written flat because `usesFlatAgentFiles` is true.
+Chops creates agents as flat `<agents-dir>/<name>.md` files for every agent-creatable tool — Claude Code, Cursor, Auggie, and Factory — because `usesFlatAgentFiles` is true for each. The scanner still accepts subdirectory-style agents too. Codex is scanned for agents but is not agent-creatable: it has no standalone agent-file format upstream (subagents live inside a skill as `agents/openai.yaml`).
 
 Creating a Global skill writes `~/.agents/skills/<name>/SKILL.md` and then symlinks that folder into every installed `AgentTarget`: Claude Code, Codex, Amp, OpenCode, Goose, Cursor, Windsurf, and Warp. Goose and Warp are symlink targets only; they are not `ToolSource` cases today.
 
