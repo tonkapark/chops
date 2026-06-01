@@ -204,7 +204,7 @@ Open standard single command to install, remove, update skill files
 - **Detect:** `aider`
 - **Docs:** <https://aider.chat>
 
-Last verified: 2026-05-31 against app source. Vendor docs should be rechecked before relying on a row for new implementation work.
+Last verified: 2026-06-01 against app source. Vendor docs should be rechecked before relying on a row for new implementation work.
 
 ## Exceptions And Extra Sources
 
