@@ -147,7 +147,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .augment: return ["\(home)/.augment/skills"]
         case .claude: return ["\(home)/.claude/skills"]
         case .cursor: return ["\(home)/.cursor/skills"]
-        case .windsurf: return []
+        case .windsurf: return ["\(home)/.codeium/windsurf/skills"]
         case .codex: return ["\(home)/.codex/skills"]
         case .copilot: return ["\(home)/.copilot/skills"]
         case .aider: return []

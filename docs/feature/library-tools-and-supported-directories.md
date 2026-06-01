@@ -72,9 +72,8 @@ Open standard single command to install, remove, update skill files
 ### Global Agent Skills
 
 - **Detect:** `~/.agents/skills`
-- **Scan:** `~/.agents/skills`
-- **Create:** `~/.agents/skills/<name>/SKILL.md`; symlinks to installed targets
-- **Plugins:** none
+- **SkillScan:** `~/.agents/skills`
+- **CreateSkill:** `~/.agents/skills/<name>/SKILL.md`; symlinks to installed targets
 - **Docs:** <https://agentskills.io/specification/>
 
 ### Claude Code
@@ -97,10 +96,10 @@ Open standard single command to install, remove, update skill files
 ### Cursor
 
 - **Detect:** `Cursor.app` or `~/.cursor/argv.json`
-- **SkillScan:** `~/.cursor/skills`, `.cursor/skills`, `.agent/skills`
+- **SkillScan:** `~/.cursor/skills`, `.cursor/skills`
 - **AgentScan:** `~/.cursor/agents`, `.cursor/agents`
 - **RuleScan:** `~/.cursor/rules`, `.cursor/rules`
-- **CreateSkill:** `~/.agents/skills/<name>/SKILL.md`; 
+- **CreateSkill:** `~/.cursor/skills/<name>/SKILL.md`; 
 - **CreateAgent:** `~/.cursor/agents/<name>.md`; 
 - **CreateRule:** `~/.cursor/rules/<name>.mdc`
 - **Docs:** <https://cursor.com/docs/skills>
@@ -109,7 +108,8 @@ Open standard single command to install, remove, update skill files
 ### Windsurf
 
 - **Detect:** `Windsurf.app` or `~/.codeium/windsurf/argv.json`
-- **RuleScan:** `~/.codeium/windsurf/memories`, `~/.windsurf/rules`, `.windsurf/rules`, `~/.codeium/windsurf/memories/global_rules.md`, `~/.codeium/windsurf/skills/`
+- **SkillScan:** `~/.codeium/windsurf/skills/`, `.windsurf/skills/`
+- **RuleScan:** `~/.codeium/windsurf/memories`, `~/.windsurf/rules`, `.windsurf/rules`
 - **CreateSkill:** `~/.codeium/windsurf/skills/<name>/SKILL.md`
 - **CreateRule:** `~/.windsurf/rules/<name>.md`
 - **Docs:** <https://docs.windsurf.com/windsurf/cascade/memories>
@@ -137,10 +137,9 @@ Open standard single command to install, remove, update skill files
 ### Copilot
 
 - **Detect:** `~/.copilot` or `copilot`
-- **SkillScan:** `~/.copilot/skills`, `.github/skills`, `.github/copilot-instructions.md`
+- **SkillScan:** `~/.copilot/skills`, `.github/skills`
 - **AgentScan:** `.github/agents`
 - **CreateSkill:** `~/.github/skills`
-- **CreateAgent:** `~/.github/agents`
 - **Docs:** <https://docs.github.com/en/copilot>
 - **SupportsOpenStandardDiscovery:** true
 
@@ -200,9 +199,6 @@ Open standard single command to install, remove, update skill files
 ### Aider
 
 - **Detect:** `aider`
-- **SkillScan:** none
-- **CreateSkill:** none
-- **Plugins:** none
 - **Docs:** <https://aider.chat>
 
 Last verified: 2026-05-31 against app source. Vendor docs should be rechecked before relying on a row for new implementation work.
