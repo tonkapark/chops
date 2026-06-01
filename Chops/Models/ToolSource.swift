@@ -127,6 +127,14 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Agents stored as top-level `.md` files in `globalAgentPaths`, not one subfolder per agent.
+    var usesFlatAgentFiles: Bool {
+        switch self {
+        case .factory: return true
+        default: return false
+        }
+    }
+
     var globalPaths: [String] {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let configHome: String = {
@@ -229,7 +237,8 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
                 || fm.fileExists(atPath: "\(configHome)/amp/settings.json")
                 || Self.cliBinaryExists("amp")
         case .pi:
-            return Self.cliBinaryExists("pi")
+            return fm.fileExists(atPath: "\(home)/.pi")
+                || Self.cliBinaryExists("pi")
         case .copilot:
             return fm.fileExists(atPath: "\(home)/.copilot")
                 || Self.cliBinaryExists("copilot")

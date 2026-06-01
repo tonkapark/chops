@@ -14,7 +14,7 @@ struct NewSkillSheet: View {
     private var creatableTools: [ToolSource] {
         switch itemKind {
         case .skill:
-            return [.agents, .amp, .antigravity, .claude, .codex, .cursor, .opencode, .pi]
+            return [.agents, .amp, .antigravity, .claude, .codex, .cursor, .factory, .opencode, .pi]
         case .agent:
             return ToolSource.allCases.filter { !$0.globalAgentPaths.isEmpty }
         case .rule:
@@ -93,7 +93,11 @@ struct NewSkillSheet: View {
                 errorMessage = "This tool doesn't support agents"
                 return
             }
-            basePath = "\(dir)/\(sanitizedName)"
+            if selectedTool.usesFlatAgentFiles {
+                basePath = dir
+            } else {
+                basePath = "\(dir)/\(sanitizedName)"
+            }
             fileName = "\(sanitizedName).md"
         case .rule:
             guard let dir = selectedTool.globalRulePaths.first else {
@@ -144,7 +148,7 @@ struct NewSkillSheet: View {
             let skill = Skill(
                 filePath: filePath,
                 toolSource: selectedTool,
-                isDirectory: itemKind != .rule,
+                isDirectory: itemKind == .skill || (itemKind == .agent && !selectedTool.usesFlatAgentFiles),
                 name: skillName,
                 skillDescription: parsed.description,
                 content: parsed.content,
