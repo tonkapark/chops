@@ -7,10 +7,12 @@ import Foundation
 /// resource folders (templates/, references/, scripts/, …).
 struct SkillHeaderPanel: View {
     let skill: Skill
+    @State private var copiedPath = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             headerRow
+            locationRow
             if !siblingFolders.isEmpty {
                 contentsRow
             }
@@ -48,6 +50,59 @@ struct SkillHeaderPanel: View {
                     ToolIcon(tool: tool, size: 14, title: tool.displayName)
                 }
             }
+        }
+    }
+
+    // MARK: - Location
+
+    private var locationRow: some View {
+        HStack(spacing: 6) {
+            Text("Location:")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                copyPath()
+            } label: {
+                HStack(spacing: 4) {
+                    Text(displayLocation)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Image(systemName: copiedPath ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+            .help(copiedPath ? "Copied!" : "Click to copy path")
+        }
+    }
+
+    private var displayLocation: String {
+        let path = locationPath
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return path.replacingOccurrences(of: home, with: "~")
+    }
+
+    private var locationPath: String {
+        if skill.isRemote {
+            return skill.remotePath ?? ""
+        }
+        return URL(fileURLWithPath: skill.filePath)
+            .deletingLastPathComponent()
+            .path
+    }
+
+    private func copyPath() {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(locationPath, forType: .string)
+        copiedPath = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            copiedPath = false
         }
     }
 
