@@ -14,9 +14,12 @@ struct NewSkillSheet: View {
     private var creatableTools: [ToolSource] {
         switch itemKind {
         case .skill:
-            return [.agents, .amp, .antigravity, .claude, .codex, .cursor, .opencode, .pi]
+            return [.agents, .amp, .antigravity, .augment, .claude, .codex, .copilot, .cursor, .factory, .opencode, .pi, .windsurf]
         case .agent:
-            return ToolSource.allCases.filter { !$0.globalAgentPaths.isEmpty }
+            // Codex is intentionally excluded: it has no standalone agent-file
+            // format upstream (subagents live inside a skill as agents/openai.yaml),
+            // even though ~/.codex/agents is still scanned.
+            return [.augment, .claude, .cursor, .factory]
         case .rule:
             return ToolSource.allCases.filter { !$0.globalRulePaths.isEmpty }
         }
@@ -93,7 +96,11 @@ struct NewSkillSheet: View {
                 errorMessage = "This tool doesn't support agents"
                 return
             }
-            basePath = "\(dir)/\(sanitizedName)"
+            if selectedTool.usesFlatAgentFiles {
+                basePath = dir
+            } else {
+                basePath = "\(dir)/\(sanitizedName)"
+            }
             fileName = "\(sanitizedName).md"
         case .rule:
             guard let dir = selectedTool.globalRulePaths.first else {
@@ -144,7 +151,7 @@ struct NewSkillSheet: View {
             let skill = Skill(
                 filePath: filePath,
                 toolSource: selectedTool,
-                isDirectory: itemKind != .rule,
+                isDirectory: itemKind == .skill || (itemKind == .agent && !selectedTool.usesFlatAgentFiles),
                 name: skillName,
                 skillDescription: parsed.description,
                 content: parsed.content,

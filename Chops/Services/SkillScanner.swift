@@ -56,12 +56,20 @@ final class SkillScanner {
         (".cursor/agents", .cursor, .agent),
         (".codex/skills", .codex, .skill),
         (".codex/agents", .codex, .agent),
+        (".windsurf/skills", .windsurf, .skill),
         (".windsurf/rules", .windsurf, .rule),
+        (".augment/skills", .augment, .skill),
+        (".augment/agents", .augment, .agent),
+        (".augment/rules", .augment, .rule),
         (".github", .copilot, .skill),
+        (".github/skills", .copilot, .skill),
         (".github/agents", .copilot, .agent),
         (".config/amp/skills", .amp, .skill),
         (".opencode/skills", .opencode, .skill),
         (".hermes/skills", .hermes, .skill),
+        (".factory/skills", .factory, .skill),
+        (".factory/commands", .factory, .skill),
+        (".factory/droids", .factory, .agent), 
     ]
 
     func scanAll() {
@@ -151,7 +159,7 @@ final class SkillScanner {
                 let probePath = project.appendingPathComponent(probe.subpath)
                 guard fm.fileExists(atPath: probePath.path) else { continue }
 
-                if probe.tool == .copilot && probe.kind == .skill {
+                if probe.subpath == ".github" {
                     let file = probePath.appendingPathComponent("copilot-instructions.md")
                     if fm.fileExists(atPath: file.path) {
                         if let data = collectSkillData(at: file, toolSource: .copilot, isDirectory: false, isGlobal: false, kind: probe.kind) {

@@ -15,6 +15,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
     case opencode
     case pi
     case antigravity
+    case factory
     case claudeDesktop
     case custom
 
@@ -46,6 +47,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: "Pi"
         case .agents: "Global"
         case .antigravity: "Antigravity"
+        case .factory: "Factory"
         case .claudeDesktop: "Claude Desktop"
         case .custom: "Custom"
         }
@@ -68,6 +70,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: "sparkles"
         case .agents: "globe"
         case .antigravity: "arrow.up.circle"
+        case .factory: "gearshape.2"
         case .claudeDesktop: "desktopcomputer"
         case .custom: "folder"
         }
@@ -84,6 +87,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .copilot: "tool-copilot"
         case .amp: "tool-amp"
         case .antigravity: "tool-antigravity"
+        case .factory: "tool-factory"
         case .claudeDesktop: "tool-claude"
         case .opencode: "tool-opencode"
         default: nil
@@ -106,6 +110,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: .cyan
         case .agents: .mint
         case .antigravity: .red
+        case .factory: .indigo
         case .claudeDesktop: .orange
         case .custom: .gray
         }
@@ -117,7 +122,17 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .claude: return ["\(home)/.claude/agents"]
         case .cursor: return ["\(home)/.cursor/agents"]
         case .codex: return ["\(home)/.codex/agents"]
+        case .factory: return ["\(home)/.factory/droids"]
+        case .augment: return ["\(home)/.augment/agents"]
         default: return []
+        }
+    }
+
+    /// Agents stored as top-level `.md` files in `globalAgentPaths`, not one subfolder per agent.
+    var usesFlatAgentFiles: Bool {
+        switch self {
+        case .factory, .augment, .claude, .cursor: return true
+        default: return false
         }
     }
 
@@ -133,7 +148,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .augment: return ["\(home)/.augment/skills"]
         case .claude: return ["\(home)/.claude/skills"]
         case .cursor: return ["\(home)/.cursor/skills"]
-        case .windsurf: return []
+        case .windsurf: return ["\(home)/.codeium/windsurf/skills"]
         case .codex: return ["\(home)/.codex/skills"]
         case .copilot: return ["\(home)/.copilot/skills"]
         case .aider: return []
@@ -177,7 +192,8 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .opencode: return ["\(configHome)/opencode/skills"]
         case .pi: return ["\(home)/.pi/agent/skills"]
         case .agents: return ["\(home)/.agents/skills"]
-        case .antigravity: return ["\(home)/.gemini/antigravity/skills"]
+        case .antigravity: return ["\(home)/.gemini/config/skills", "\(home)/.gemini/antigravity/skills"]
+        case .factory: return ["\(home)/.factory/skills", "\(home)/.factory/commands"]
         case .claudeDesktop: return []
         case .custom: return []
         }
@@ -188,6 +204,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .cursor: return ["\(home)/.cursor/rules"]
         case .windsurf: return ["\(home)/.codeium/windsurf/memories", "\(home)/.windsurf/rules"]
+        case .augment: return ["\(home)/.augment/rules"]
         default: return []
         }
     }
@@ -222,7 +239,8 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
                 || fm.fileExists(atPath: "\(configHome)/amp/settings.json")
                 || Self.cliBinaryExists("amp")
         case .pi:
-            return Self.cliBinaryExists("pi")
+            return fm.fileExists(atPath: "\(home)/.pi")
+                || Self.cliBinaryExists("pi")
         case .copilot:
             return fm.fileExists(atPath: "\(home)/.copilot")
                 || Self.cliBinaryExists("copilot")
@@ -254,7 +272,12 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .hermes:
             return fm.fileExists(atPath: "\(home)/.hermes")
                 || Self.cliBinaryExists("hermes")
-        case .aider, .custom:
+        case .factory:
+            return fm.fileExists(atPath: "\(home)/.factory")
+                || Self.cliBinaryExists("droid")
+        case .aider:
+            return Self.cliBinaryExists("aider")
+        case .custom:
             return true
         }
     }

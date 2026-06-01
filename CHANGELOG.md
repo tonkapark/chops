@@ -8,6 +8,7 @@
 - Simplified sidebar: a single unified Library, a Discovery entry, and a cleaner tool list
 - Added keyboard shortcuts: ⌘B to toggle the sidebar and ⌘⇧L to jump to Library
 - Select multiple skills with shift/⌘-click to favorite, add to a collection, or delete them in bulk
+- Add Factory (Droid CLI) as a tool source — discovers Factory skills (`~/.factory/skills/`) and droids as agents (`~/.factory/droids/`)
 
 ## [1.15.0] - 2026-04-28
 
