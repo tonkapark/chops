@@ -15,6 +15,7 @@
 		2263A0A3B358FBA099D0086D /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A924245DDDA4C6A59BE15567 /* SettingsView.swift */; };
 		25A4FB387DB5BD96DB630C14 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 231C267216AF1BCA8628B667 /* AppState.swift */; };
 		2958B4F28A2BA0D683550419 /* WizardTemplateType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6B997C722E5E4F3ECE3877 /* WizardTemplateType.swift */; };
+		2E722DC80F194C51E710FF58 /* SkillHeaderPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0DD9AD68758E5792F3BB58 /* SkillHeaderPanel.swift */; };
 		309B12E0B72A22C9772BBC99 /* ChopsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2787064DC7DF112E70C4E4D0 /* ChopsApp.swift */; };
 		322C22C23073C29FC0C6098D /* MarkdownMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947EAED7376B7762A373EF08 /* MarkdownMessageView.swift */; };
 		331F55021A7E6C9F0B666514 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 4338FC540625A275BBC9AAC9 /* Sparkle */; };
@@ -96,6 +97,7 @@
 		3C6B997C722E5E4F3ECE3877 /* WizardTemplateType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WizardTemplateType.swift; sourceTree = "<group>"; };
 		3CD5E41FB46E550A2F56E881 /* CodexCLIAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexCLIAgent.swift; sourceTree = "<group>"; };
 		3D23D43EC788E51ED1C265FE /* StoreBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreBootstrap.swift; sourceTree = "<group>"; };
+		3F0DD9AD68758E5792F3BB58 /* SkillHeaderPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillHeaderPanel.swift; sourceTree = "<group>"; };
 		4CA102A49ACFB23BC15794F8 /* CollectionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionListView.swift; sourceTree = "<group>"; };
 		5155D141EF812A3FE9ADF59C /* SkillParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillParser.swift; sourceTree = "<group>"; };
 		5252495017119789B3F4B78F /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
@@ -307,6 +309,7 @@
 				135976FA0E8358E099157DE1 /* MarkdownSyntaxHighlighter.swift */,
 				168E103488DEA623E712852B /* SkillDetailView.swift */,
 				31B4DB87833D5160A11E39C9 /* SkillEditorView.swift */,
+				3F0DD9AD68758E5792F3BB58 /* SkillHeaderPanel.swift */,
 				8C812515FD8DC222B89745F2 /* SkillMetadataBar.swift */,
 				77E332B9970E6E3D00DCFBA3 /* SkillPreviewView.swift */,
 			);
@@ -459,6 +462,7 @@
 				95163AEB7980654C901EC693 /* Skill.swift in Sources */,
 				09D3F065191A83BDEE922789 /* SkillDetailView.swift in Sources */,
 				FB295303DD30AED03290C726 /* SkillEditorView.swift in Sources */,
+				2E722DC80F194C51E710FF58 /* SkillHeaderPanel.swift in Sources */,
 				E98F7490B18A194F82ED2C0E /* SkillListView.swift in Sources */,
 				87A469B631CC80C89B14B1C7 /* SkillMetadataBar.swift in Sources */,
 				60A6711BAB0C3B8A3ACBF985 /* SkillParser.swift in Sources */,

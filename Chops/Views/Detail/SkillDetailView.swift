@@ -93,6 +93,8 @@ struct SkillDetailView: View {
         @Bindable var document = document
 
         VStack(spacing: 0) {
+            SkillHeaderPanel(skill: skill)
+
             ZStack(alignment: .bottomTrailing) {
                 if preferPreview {
                     SkillPreviewView(content: document.editorContent)

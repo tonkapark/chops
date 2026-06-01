@@ -9,15 +9,6 @@ struct SkillMetadataBar: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            HStack(spacing: 6) {
-                ForEach(skill.toolSources) { tool in
-                    ToolIcon(tool: tool, size: 14)
-                }
-            }
-            .help(installedPathsSummary)
-
-            Divider().frame(height: 16)
-
             if skill.isRemote, let server = skill.remoteServer {
                 Label {
                     Text(server.label)

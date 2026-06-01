@@ -18,17 +18,34 @@ struct ToolBadge: View {
 struct ToolIcon: View {
     let tool: ToolSource
     var size: CGFloat = 16
+    var title: String? = nil
 
     var body: some View {
-        if let assetName = tool.logoAssetName {
-            Image(assetName)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size, height: size)
+        Group {
+            if let assetName = tool.logoAssetName {
+                Image(assetName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: size, height: size)
+            } else {
+                Image(systemName: tool.iconName)
+                    .font(.system(size: size * 0.7))
+                    .frame(width: size, height: size)
+            }
+        }
+        .contentShape(Rectangle())
+        .modifier(OptionalHelp(text: title))
+    }
+}
+
+private struct OptionalHelp: ViewModifier {
+    let text: String?
+
+    func body(content: Content) -> some View {
+        if let text, !text.isEmpty {
+            content.help(text)
         } else {
-            Image(systemName: tool.iconName)
-                .font(.system(size: size * 0.7))
-                .frame(width: size, height: size)
+            content
         }
     }
 }
