@@ -59,6 +59,8 @@ Agent Skills are a lightweight, open format for extending AI agent capabilities 
 - overview <https://agentskills.io/>
 - full spec <https://agentskills.io/specification/>  (`SKILL.md`, frontmatter, directory layout)
 
+A registry row's **SupportsOpenStandardDiscovery** flag marks whether the tool is expected to read the open-standard `~/.agents/skills` (and project `.agents/skills`) location per this spec. It is currently informational only — a forward-looking marker for planned shared-discovery support — and is **not** yet read by `ToolSource` or `SkillScanner`. Today, open-standard discovery is wired through the Global (`.agents`) tool and `AgentTarget` symlink fan-out, not this flag.
+
 ## Vercel `skills` CLI
 
 Open standard single command to install, remove, update skill files
@@ -267,7 +269,7 @@ Symlinked directories are resolved and traversed. Skills are de-duplicated by re
 | Rule       | loose file | `<rules-dir>/<name>.md`         | Plain `# <name>` heading, no frontmatter.                                                                                              |
 
 
-The `Created` column in [Tool Registry](#tool-registry) is the current source of truth for which tools appear in the new-item sheet.
+The `CreateSkill`, `CreateAgent`, and `CreateRule` rows in [Tool Registry](#tool-registry) document which tools appear in the new-item sheet for each kind. The actual source of truth is the `creatableTools` lists in `NewSkillSheet`; keep the registry rows in sync with them.
 
 Chops creates agents as flat `<agents-dir>/<name>.md` files for every agent-creatable tool — Claude Code, Cursor, Auggie, and Factory — because `usesFlatAgentFiles` is true for each. The scanner still accepts subdirectory-style agents too. Codex is scanned for agents but is not agent-creatable: it has no standalone agent-file format upstream (subagents live inside a skill as `agents/openai.yaml`).
 
