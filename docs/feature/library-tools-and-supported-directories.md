@@ -109,9 +109,8 @@ Open standard single command to install, remove, update skill files
 
 - **Detect:** `Windsurf.app` or `~/.codeium/windsurf/argv.json`
 - **SkillScan:** `~/.codeium/windsurf/skills/`, `.windsurf/skills/`
-- **RuleScan:** `~/.codeium/windsurf/memories`, `~/.windsurf/rules`, `.windsurf/rules`
+- **RuleScan:** `~/.codeium/windsurf/memories`, `~/.windsurf/rules`, `.windsurf/rules`,  
 - **CreateSkill:** `~/.codeium/windsurf/skills/<name>/SKILL.md`
-- **CreateRule:** `~/.windsurf/rules/<name>.md`
 - **Docs:** <https://docs.windsurf.com/windsurf/cascade/memories>
 
 ### Codex
@@ -119,7 +118,7 @@ Open standard single command to install, remove, update skill files
 - **Detect:** `~/.codex/config.toml`, `~/.codex/auth.json`, or `codex`
 - **SkillScan:** `~/.codex/skills`, `.codex/skills`
 - **AgentScan:** `~/.codex/agents`, `.codex/agents`
-- **CreateSkill:** `~/.agents/skills/<name>/SKILL.md`
+- **CreateSkill:** `~/.codex/skills/<name>/SKILL.md`
 - **CreateAgent:** `~/.codex/agents/<name>.toml`
 - **Docs:** <https://developers.openai.com/codex/skills>
 - **SupportsOpenStandardDiscovery:** true
@@ -133,6 +132,7 @@ Open standard single command to install, remove, update skill files
 - **CreateAgent:** `~/.factory/droids/<name>.md`
 - **Docs:** <https://docs.factory.ai>
 - **SupportsOpenStandardDiscovery:** true
+- **Note:** Only skill commands are scanned; per Factory docs, only skill creation is supported.
 
 ### Copilot
 
@@ -154,11 +154,12 @@ Open standard single command to install, remove, update skill files
 ### Auggie
 
 - **Detect:** `Augment.app`, `~/.augment/settings.json`, or `augment`
-- **SkillScan:** `~/.augment/skills`
-- **AgentScan:** `~/.augment/agents/`
+- **SkillScan:** `~/.augment/skills`, `.augment/skills`
+- **AgentScan:** `~/.augment/agents`, `.augment/agents`
+- **RuleScan:** `~/.augment/rules`, `.augment/rules`
 - **CreateSkill:** `~/.augment/skills/<name>/SKILL.md`
 - **CreateAgent:** `~/.augment/agents/<name>.md`
-- **Docs:** <https://docs.augmentcode.com>
+- **Docs:** <https://docs.augmentcode.com/cli/skills>, <https://docs.augmentcode.com/cli/subagents>, <https://docs.augmentcode.com/cli/rules>
 - **SupportsOpenStandardDiscovery:** true
 
 ### OpenCode

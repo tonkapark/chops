@@ -123,6 +123,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .cursor: return ["\(home)/.cursor/agents"]
         case .codex: return ["\(home)/.codex/agents"]
         case .factory: return ["\(home)/.factory/droids"]
+        case .augment: return ["\(home)/.augment/agents"]
         default: return []
         }
     }
@@ -192,7 +193,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         case .pi: return ["\(home)/.pi/agent/skills"]
         case .agents: return ["\(home)/.agents/skills"]
         case .antigravity: return ["\(home)/.gemini/antigravity/skills", "\(home)/.gemini/config/skills"]
-        case .factory: return ["\(home)/.factory/skills"]
+        case .factory: return ["\(home)/.factory/skills", "\(home)/.factory/commands"]
         case .claudeDesktop: return []
         case .custom: return []
         }
@@ -203,6 +204,7 @@ enum ToolSource: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .cursor: return ["\(home)/.cursor/rules"]
         case .windsurf: return ["\(home)/.codeium/windsurf/memories", "\(home)/.windsurf/rules"]
+        case .augment: return ["\(home)/.augment/rules"]
         default: return []
         }
     }

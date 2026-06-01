@@ -58,6 +58,9 @@ final class SkillScanner {
         (".codex/agents", .codex, .agent),
         (".windsurf/skills", .windsurf, .skill),
         (".windsurf/rules", .windsurf, .rule),
+        (".augment/skills", .augment, .skill),
+        (".augment/agents", .augment, .agent),
+        (".augment/rules", .augment, .rule),
         (".github", .copilot, .skill),
         (".github/skills", .copilot, .skill),
         (".github/agents", .copilot, .agent),
@@ -65,9 +68,8 @@ final class SkillScanner {
         (".opencode/skills", .opencode, .skill),
         (".hermes/skills", .hermes, .skill),
         (".factory/skills", .factory, .skill),
-        (".factory/droids", .factory, .agent),
-        // Note: .factory/commands is intentionally unsupported — Factory's docs
-        // recommend skills over slash commands.
+        (".factory/commands", .factory, .skill),
+        (".factory/droids", .factory, .agent), 
     ]
 
     func scanAll() {
