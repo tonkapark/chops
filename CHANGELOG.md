@@ -9,6 +9,12 @@
 - Added keyboard shortcuts: ⌘B to toggle the sidebar and ⌘⇧L to jump to Library
 - Select multiple skills with shift/⌘-click to favorite, add to a collection, or delete them in bulk
 - Add Factory (Droid CLI) as a tool source — discovers Factory skills (`~/.factory/skills/`) and droids as agents (`~/.factory/droids/`)
+- Installing from Browse Skills now runs `npx skills add` so the install is tracked by the skills.sh lock file
+- Source URL of installed registry skills shows in the detail header — click to open the upstream repo
+- Deleting a registry-installed skill removes it via `npx skills remove`, keeping the lock file and all per-agent symlinks in sync
+- Orange up-arrow badge appears on registry-installed skills when the upstream has moved past your installed version; click **Update** in the detail header to pull the latest
+- New **Check for Skill Updates** command in the app menu force-refreshes update status for every managed skill
+- Optional **Disable npx skills telemetry** toggle under Settings → General sets `DISABLE_TELEMETRY=1` for every `npx skills` subprocess Chops runs
 
 ## [1.15.0] - 2026-04-28
 
