@@ -208,30 +208,34 @@ struct SkillListView: View {
 
     private func deleteSkill(_ skill: Skill) {
         guard !skill.isReadOnly else { return }
-        do {
-            try skill.deleteFromDisk()
-            appState.selectedSkills.remove(skill)
-            modelContext.delete(skill)
-            try modelContext.save()
-        } catch {
-            activeAlert = .deleteError(error.localizedDescription)
+        Task { @MainActor in
+            do {
+                try await skill.deleteFromDisk()
+                appState.selectedSkills.remove(skill)
+                modelContext.delete(skill)
+                try modelContext.save()
+            } catch {
+                activeAlert = .deleteError(error.localizedDescription)
+            }
         }
     }
 
     private func deleteSkills(_ skills: [Skill]) {
-        var firstError: String?
-        for skill in skills where !skill.isReadOnly {
-            do {
-                try skill.deleteFromDisk()
-                appState.selectedSkills.remove(skill)
-                modelContext.delete(skill)
-            } catch {
-                if firstError == nil { firstError = error.localizedDescription }
+        Task { @MainActor in
+            var firstError: String?
+            for skill in skills where !skill.isReadOnly {
+                do {
+                    try await skill.deleteFromDisk()
+                    appState.selectedSkills.remove(skill)
+                    modelContext.delete(skill)
+                } catch {
+                    if firstError == nil { firstError = error.localizedDescription }
+                }
             }
-        }
-        try? modelContext.save()
-        if let firstError {
-            activeAlert = .deleteError(firstError)
+            try? modelContext.save()
+            if let firstError {
+                activeAlert = .deleteError(firstError)
+            }
         }
     }
 

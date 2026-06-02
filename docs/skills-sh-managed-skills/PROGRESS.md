@@ -1,6 +1,6 @@
 # skills.sh-Managed Skills Progress
 
-## Status: Phase 2a - In Progress | Next: Phase 3 (Remove via CLI)
+## Status: Phase 3 - In Progress (awaiting manual verify) | Next: Phase 4 (Update detection)
 
 ## Quick Reference
 - Research: `docs/skills-sh-managed-skills/RESEARCH.md`
@@ -80,20 +80,20 @@
 ---
 
 ### Phase 3: Remove via CLI
-**Status:** Not Started
+**Status:** In Progress (awaiting manual verify)
 
 #### Tasks
-- [ ] Branch `Skill.deleteFromDisk` on `lockSource != nil` — dispatch to `removeViaCLI()`
-- [ ] `removeViaCLI()` maps `toolSources` → CLI agent IDs; falls back to `-a "*"` if all unmapped
-- [ ] Promote `deleteFromDisk` to `async throws`; update ~2 call sites
-- [ ] Manual verify: install via Phase 2 → delete via UI → lock entry gone, symlinks cleaned
-- [ ] Manual verify: unmanaged skill still deletes via the existing FileManager path
-
-#### Tasks Completed
-- (none yet)
+- [x] Branch `Skill.deleteFromDisk` on `lockSource != nil` — dispatch to `SkillsCLI.remove`
+- [x] Pass empty `agentIds` (no `-a`) — verified that `npx skills remove <name> -g -y` cleanly removes from every detected agent and the lock entry
+- [x] Promote `deleteFromDisk` to `async throws`
+- [x] Wrap the three call sites (`SkillListView.deleteSkill`, `SkillListView.deleteSkills`, `SkillDetailView.deleteSkill`) in `Task { @MainActor in ... }`
+- [ ] Manual verify: install a managed skill → delete via UI → lock entry gone, symlinks cleaned
+- [ ] Manual verify: unmanaged skill still deletes via existing FileManager path
 
 #### Decisions Made
-- (none yet)
+- **Lock key from `resolvedPath`**, not `skill.name`. The canonical path is `~/.agents/skills/<key>/SKILL.md`, so the parent dir name is authoritative. `skill.name` is sourced from frontmatter and could drift from the lock key over time.
+- **Empty `agentIds` for remove** — `npx skills remove <name> -g -y` (no `-a`) cleanly removes from every detected agent. Tested: "Targeting 56 potential agent(s)" → "Successfully removed". Pre-Phase-3 the code had a `-a "*"` fallback (already deleted in Phase 2 since the CLI rejects `*` for remove).
+- **`Task { @MainActor in ... }` at every call site** rather than `await MainActor.run` inside an unstructured Task. The view methods are already MainActor-isolated, so explicit `@MainActor` on the new Task closure keeps the body in the same context — no actor hops, model context stays valid across the await.
 
 #### Blockers
 - (none)
@@ -156,6 +156,11 @@
 - `Chops/Models/ChopsSettings.swift` — added `disableSkillsCLITelemetry` UserDefaults accessor
 - `Chops/Views/Settings/SettingsView.swift` — Toggle in General tab, bound via `@AppStorage`
 - `Chops/Services/SkillsCLI.swift` — `sanitizedEnvironment` injects `DISABLE_TELEMETRY=1` when the setting is true
+
+**Phase 3:**
+- `Chops/Models/Skill.swift` — `deleteFromDisk` is now `async throws`; managed skills dispatch to `SkillsCLI.remove`
+- `Chops/Views/Sidebar/SkillListView.swift` — `deleteSkill` and `deleteSkills` wrap in `Task { @MainActor in ... }`
+- `Chops/Views/Detail/SkillDetailView.swift` — `deleteSkill` wraps in `Task { @MainActor in ... }`
 
 ## Architectural Decisions
 

@@ -264,13 +264,15 @@ struct SkillDetailView: View {
 
     private func deleteSkill() {
         guard !skill.isReadOnly else { return }
-        do {
-            try skill.deleteFromDisk()
-            appState.selectedSkill = nil
-            modelContext.delete(skill)
-            try modelContext.save()
-        } catch {
-            activeAlert = .deleteError(error.localizedDescription)
+        Task { @MainActor in
+            do {
+                try await skill.deleteFromDisk()
+                appState.selectedSkill = nil
+                modelContext.delete(skill)
+                try modelContext.save()
+            } catch {
+                activeAlert = .deleteError(error.localizedDescription)
+            }
         }
     }
 }

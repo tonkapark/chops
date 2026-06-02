@@ -250,7 +250,18 @@ extension Skill {
         isGlobal = true
     }
 
-    func deleteFromDisk() throws {
+    func deleteFromDisk() async throws {
+        // Managed skills route through the CLI so the lock file and the
+        // per-agent symlinks stay in sync. Lock key = canonical directory
+        // name (`~/.agents/skills/<key>/SKILL.md`).
+        if lockSource != nil {
+            let lockKey = URL(fileURLWithPath: resolvedPath)
+                .deletingLastPathComponent()
+                .lastPathComponent
+            try await SkillsCLI.remove(name: lockKey, agentIds: [])
+            return
+        }
+
         let fm = FileManager.default
 
         for path in deletionTargets where fm.fileExists(atPath: path) {
