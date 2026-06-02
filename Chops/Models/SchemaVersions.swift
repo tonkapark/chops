@@ -32,6 +32,14 @@ enum SchemaV1: VersionedSchema {
         var installedPathsData: Data?
         var kind: String = ItemKind.skill.rawValue
 
+        // Populated for skills tracked by the `npx skills` CLI lock file.
+        // All nil ⇔ unmanaged; presence of lockSource ⇔ managed.
+        var lockSource: String?
+        var sourceURL: String?
+        var lockInstalledAt: Date?
+        var lockUpdatedAt: Date?
+        var lockHash: String?
+
         init(
             filePath: String,
             toolSource: ToolSource,

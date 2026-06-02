@@ -493,6 +493,11 @@ final class SkillScanner {
         let existingByResolved = Dictionary(uniqueKeysWithValues: localSkills.map { ($0.resolvedPath, $0) })
         let scannedResolvedPaths = Set(groupedResults.keys)
 
+        // Lock entries keyed by the canonical `~/.agents/skills/<name>/SKILL.md` path
+        // — the same value that ends up as a skill's resolvedPath when the CLI
+        // installs it. Looked up once; applied during the upsert below.
+        let lockByCanonicalPath = lockEntriesByCanonicalPath()
+
         for (resolvedPath, installations) in groupedResults {
             guard let primary = installations.first else { continue }
 
@@ -517,6 +522,7 @@ final class SkillScanner {
                 existing.installedPaths = installedPaths
                 existing.toolSources = toolSources
                 existing.itemKind = preferredData.kind
+                applyLockMetadata(lockByCanonicalPath[resolvedPath], to: existing)
             } else {
                 let skill = Skill(
                     filePath: primary.fileURL.path,
@@ -534,6 +540,7 @@ final class SkillScanner {
                 )
                 skill.installedPaths = installedPaths
                 skill.toolSources = toolSources
+                applyLockMetadata(lockByCanonicalPath[resolvedPath], to: skill)
                 modelContext.insert(skill)
             }
         }
@@ -545,6 +552,27 @@ final class SkillScanner {
         do { try modelContext.save() } catch {
             AppLogger.scanning.error("SwiftData save failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Build a `canonical SKILL.md path → lock entry` map for the global lock
+    /// file. Nil-valued entries are returned as the absence of a key, so
+    /// applyLockMetadata receives nil for unmanaged skills and clears any
+    /// stale fields.
+    private func lockEntriesByCanonicalPath() -> [String: LockfileService.Entry] {
+        let entries = LockfileService.loadGlobal()
+        guard !entries.isEmpty else { return [:] }
+        let agentsSkillsDir = "\(NSHomeDirectory())/.agents/skills"
+        return entries.reduce(into: [:]) { dict, pair in
+            dict["\(agentsSkillsDir)/\(pair.key)/SKILL.md"] = pair.value
+        }
+    }
+
+    private func applyLockMetadata(_ entry: LockfileService.Entry?, to skill: Skill) {
+        skill.lockSource = entry?.source
+        skill.sourceURL = entry?.sourceUrl
+        skill.lockInstalledAt = entry?.installedAt
+        skill.lockUpdatedAt = entry?.updatedAt
+        skill.lockHash = entry?.skillFolderHash
     }
 
     // MARK: - Remote Server Scanning

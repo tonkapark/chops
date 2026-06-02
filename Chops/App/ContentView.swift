@@ -56,6 +56,23 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
             columnVisibility = columnVisibility == .doubleColumn ? .all : .doubleColumn
         }
+        .onChange(of: skills.count) { _, _ in
+            applyPendingSkillSelection(in: skills)
+        }
+    }
+
+    /// When the user installs from the registry, the sheet records the
+    /// canonical path of the new skill in `pendingSkillSelectionPath`. The
+    /// scan that follows surfaces the SwiftData row asynchronously — once it
+    /// appears here, we select it and clear the pending state. Observed via
+    /// `skills.count` rather than the array itself because SwiftData's @Query
+    /// can update model instances in place without changing array identity.
+    private func applyPendingSkillSelection(in skills: [Skill]) {
+        guard let path = appState.pendingSkillSelectionPath,
+              let match = skills.first(where: { $0.resolvedPath == path })
+        else { return }
+        appState.selectedSkill = match
+        appState.pendingSkillSelectionPath = nil
     }
 
     /// Runs the action chosen in the command palette, after that sheet has
@@ -98,6 +115,11 @@ struct ContentView: View {
         let claudeDesktopSessions = "\(home)/Library/Application Support/Claude/local-agent-mode-sessions"
         if fm.fileExists(atPath: claudeDesktopSessions) {
             allPaths.append(claudeDesktopSessions)
+        }
+        // The `npx skills` global lock file lives next to the skills directory,
+        // not inside it, so the per-tool watches above miss its edits.
+        if fm.fileExists(atPath: LockfileService.globalLockPath) {
+            allPaths.append(LockfileService.globalLockPath)
         }
         allPaths = Array(Set(allPaths)).sorted()
 

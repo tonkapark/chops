@@ -308,50 +308,12 @@ final class SkillRegistry {
 
     // MARK: - Install
 
-    func install(content: String, skillName: String, agents: [AgentTarget]) throws {
-        let sanitized = skillName
-            .lowercased()
-            .replacingOccurrences(of: " ", with: "-")
-            .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "." || $0 == "_" }
-            .trimmingCharacters(in: CharacterSet(charactersIn: ".-"))
-
-        guard !sanitized.isEmpty else {
-            throw RegistryError.invalidSkillName
-        }
-
-        let fm = FileManager.default
-        let home = fm.homeDirectoryForCurrentUser.path
-
-        // Canonical location — matches the official skills CLI behavior
-        let canonicalDir = "\(home)/.agents/skills/\(sanitized)"
-        let canonicalFile = "\(canonicalDir)/SKILL.md"
-        let canonicalAlreadyExisted = fm.fileExists(atPath: canonicalFile)
-
-        // Write real file to canonical location if not already there
-        if !canonicalAlreadyExisted {
-            try fm.createDirectory(atPath: canonicalDir, withIntermediateDirectories: true)
-            try content.write(toFile: canonicalFile, atomically: true, encoding: .utf8)
-        }
-
-        // Symlink from each agent's skills dir to the canonical location
-        var newLinks = 0
-        for agent in agents {
-            let agentDir = "\(agent.expandedSkillsDir)/\(sanitized)"
-
-            // Skip if already installed (real file or symlink)
-            if fm.fileExists(atPath: agentDir) { continue }
-
-            // Create parent dir if needed
-            try fm.createDirectory(atPath: agent.expandedSkillsDir, withIntermediateDirectories: true)
-
-            // Create symlink to canonical dir
-            try fm.createSymbolicLink(atPath: agentDir, withDestinationPath: canonicalDir)
-            newLinks += 1
-        }
-
-        if newLinks == 0 && canonicalAlreadyExisted {
-            throw RegistryError.skillAlreadyExists
-        }
+    /// Installs a registry skill via `npx skills add -g`. Truth (lock file,
+    /// canonical files, symlinks) is owned by the CLI — Chops just kicks it
+    /// off and surfaces the result. The CLI auto-detects which of the user's
+    /// installed agents to wire up.
+    func install(skill: RegistrySkill) async throws {
+        try await SkillsCLI.add(source: skill.source, skillId: skill.skillId)
     }
 
     // MARK: - Errors
@@ -361,8 +323,6 @@ final class SkillRegistry {
         case treeFetchFailed
         case rateLimited
         case skillNotFound
-        case invalidSkillName
-        case skillAlreadyExists
 
         var errorDescription: String? {
             switch self {
@@ -370,8 +330,6 @@ final class SkillRegistry {
             case .treeFetchFailed: "Could not fetch repository contents"
             case .rateLimited: "GitHub API rate limit reached — try again in a few minutes"
             case .skillNotFound: "File not found in repository"
-            case .invalidSkillName: "Invalid name"
-            case .skillAlreadyExists: "Already installed for all selected targets"
             }
         }
     }

@@ -13,6 +13,9 @@ struct SkillHeaderPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             headerRow
             locationRow
+            if sourceLinkURL != nil {
+                sourceRow
+            }
             if !siblingFolders.isEmpty {
                 contentsRow
             }
@@ -106,6 +109,57 @@ struct SkillHeaderPanel: View {
             try? await Task.sleep(for: .seconds(1.5))
             copiedPath = false
         }
+    }
+
+    // MARK: - Source
+
+    private var sourceRow: some View {
+        HStack(spacing: 6) {
+            Text("Source:")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                if let url = sourceLinkURL {
+                    NSWorkspace.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(displaySourceURL ?? "")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Image(systemName: "arrow.up.forward")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+            .help(skill.sourceURL ?? "")
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// The URL that opens when the user clicks the Source row. Falls back to
+    /// the GitHub HTTPS form when the lock file stored an `https://…/foo.git`
+    /// URL, since browsers don't render `.git` URLs.
+    private var sourceLinkURL: URL? {
+        guard let raw = skill.sourceURL, !raw.isEmpty else { return nil }
+        let trimmed = raw.hasSuffix(".git") ? String(raw.dropLast(4)) : raw
+        return URL(string: trimmed)
+    }
+
+    /// Compact display form: drops the scheme and trailing `.git`. e.g.
+    /// `https://github.com/imbue-ai/blueprint.git` → `github.com/imbue-ai/blueprint`.
+    private var displaySourceURL: String? {
+        guard let raw = skill.sourceURL, !raw.isEmpty else { return nil }
+        var s = raw
+        if s.hasPrefix("https://") { s.removeFirst("https://".count) }
+        else if s.hasPrefix("http://") { s.removeFirst("http://".count) }
+        if s.hasSuffix(".git") { s.removeLast(4) }
+        return s
     }
 
     // MARK: - Contents

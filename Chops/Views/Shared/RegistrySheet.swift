@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RegistrySheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var appState
     @State private var registry = SkillRegistry()
     @State private var searchText = ""
     @State private var results: [SkillRegistry.RegistrySkill] = []
@@ -11,7 +12,6 @@ struct RegistrySheet: View {
     @State private var officialOnly = false
     @State private var selectedSkill: SkillRegistry.RegistrySkill?
     @State private var skillContent: String?
-    @State private var selectedAgents: Set<String> = []
     @State private var isSearching = false
     @State private var isFetchingContent = false
     @State private var isInstalling = false
@@ -19,10 +19,6 @@ struct RegistrySheet: View {
     @State private var installSuccess = false
     @State private var searchTask: Task<Void, Never>?
     @State private var contentTask: Task<Void, Never>?
-
-    private var installedAgents: [AgentTarget] {
-        AgentTarget.installed
-    }
 
     /// What the list renders: trending when idle, locally-filtered trending plus any
     /// long-tail API hits when searching. Local matches come first (they're the popular
@@ -83,10 +79,8 @@ struct RegistrySheet: View {
                 searchView
             }
         }
-        .frame(width: 560, height: 500)
+        .frame(width: 560, height: 620)
         .task {
-            // Pre-select all installed agents
-            selectedAgents = Set(installedAgents.map(\.id))
             await loadTrending()
         }
         .onDisappear {
@@ -213,7 +207,8 @@ struct RegistrySheet: View {
                 ProgressView("Loading skill content...")
                 Spacer()
             } else if let content = skillContent {
-                // Content preview
+                // Content preview — fills the freed vertical space now that
+                // per-agent checkboxes are gone.
                 ScrollView {
                     Text(content)
                         .font(.system(.caption, design: .monospaced))
@@ -221,75 +216,13 @@ struct RegistrySheet: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
                 }
-                .frame(maxHeight: 200)
+                .frame(maxHeight: .infinity)
                 .background(.quaternary.opacity(0.3))
 
                 Divider()
 
-                // Agent selection
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Install to:")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-
-                        Spacer()
-
-                        if !installedAgents.isEmpty {
-                            let allSelected = selectedAgents.count == installedAgents.count
-                            Button(allSelected ? "Deselect All" : "Select All") {
-                                if allSelected {
-                                    selectedAgents.removeAll()
-                                } else {
-                                    selectedAgents = Set(installedAgents.map(\.id))
-                                }
-                            }
-                            .font(.caption)
-                            .buttonStyle(.plain)
-                            .foregroundColor(.accentColor)
-                        }
-                    }
-
-                    if installedAgents.isEmpty {
-                        Text("No supported agents detected on this machine.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                ForEach(installedAgents) { agent in
-                                    HStack(spacing: 8) {
-                                        Image(systemName: selectedAgents.contains(agent.id) ? "checkmark.circle.fill" : "circle")
-                                            .foregroundColor(selectedAgents.contains(agent.id) ? .accentColor : .secondary)
-                                            .font(.system(size: 14))
-
-                                        Text(agent.displayName)
-                                            .font(.system(size: 12))
-
-                                        Spacer()
-                                    }
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        if selectedAgents.contains(agent.id) {
-                                            selectedAgents.remove(agent.id)
-                                        } else {
-                                            selectedAgents.insert(agent.id)
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 4)
-                                }
-                            }
-                        }
-                        .frame(maxHeight: 140)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-
-                Divider()
-
-                // Install button
+                // Install button — always installs globally; CLI auto-detects
+                // which of the user's installed agents to wire up.
                 HStack {
                     if let error {
                         Text(error)
@@ -306,8 +239,16 @@ struct RegistrySheet: View {
 
                     Spacer()
 
+                    Text("npx skills add \(skill.source) -g -s \(skill.skillId) -y")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help("npx skills add \(skill.source) -g -s \(skill.skillId) -y")
+                        .layoutPriority(-1)
+
                     Button {
-                        performInstall(content: content, skillName: skill.skillId)
+                        performInstall(skill: skill)
                     } label: {
                         if isInstalling {
                             ProgressView()
@@ -317,7 +258,7 @@ struct RegistrySheet: View {
                         }
                     }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(selectedAgents.isEmpty || isInstalling || installSuccess)
+                    .disabled(isInstalling || installSuccess)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -412,29 +353,38 @@ struct RegistrySheet: View {
         }
     }
 
-    private func performInstall(content: String, skillName: String) {
-        let agents = installedAgents.filter { selectedAgents.contains($0.id) }
-        guard !agents.isEmpty else { return }
-
+    private func performInstall(skill: SkillRegistry.RegistrySkill) {
         isInstalling = true
         error = nil
 
-        do {
-            try registry.install(content: content, skillName: skillName, agents: agents)
-            installSuccess = true
-            isInstalling = false
+        Task {
+            do {
+                try await registry.install(skill: skill)
+                installSuccess = true
+                isInstalling = false
 
-            // Trigger re-scan so the new skill appears immediately
-            NotificationCenter.default.post(name: .customScanPathsChanged, object: nil)
+                // Tell ContentView which skill to select once the rescan
+                // surfaces it; canonical path matches the `npx skills add`
+                // layout (`~/.agents/skills/<skillId>/SKILL.md`).
+                appState.pendingSkillSelectionPath =
+                    "\(NSHomeDirectory())/.agents/skills/\(skill.skillId)/SKILL.md"
 
-            // Auto-dismiss after brief delay
-            Task {
+                // Universal-mode agents (Cursor, Codex, Zed, …) get no
+                // per-agent symlink, so the skill's only toolSource is
+                // `.agents`. Make sure the active filter actually contains
+                // it — otherwise the highlight target is invisible.
+                appState.sidebarFilter = .allSkills
+                appState.toolKindFilter = nil
+
+                // Trigger re-scan so the new skill appears immediately
+                NotificationCenter.default.post(name: .customScanPathsChanged, object: nil)
+
                 try? await Task.sleep(for: .milliseconds(800))
-                await MainActor.run { dismiss() }
+                dismiss()
+            } catch {
+                self.error = error.localizedDescription
+                isInstalling = false
             }
-        } catch {
-            self.error = error.localizedDescription
-            isInstalling = false
         }
     }
 }

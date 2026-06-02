@@ -22,6 +22,10 @@ final class AppState {
     var sidebarFilter: SidebarFilter = .allSkills
     /// Filter by item kind within a tool view (nil = show all)
     var toolKindFilter: ItemKind?
+    /// Resolved-path of a skill the user just installed via the registry.
+    /// ContentView watches its skills query and auto-selects the matching
+    /// skill the moment scanning surfaces it, then clears this.
+    var pendingSkillSelectionPath: String?
 }
 
 enum PaletteAction: Equatable {
