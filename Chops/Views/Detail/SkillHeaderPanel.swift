@@ -77,6 +77,8 @@ struct SkillHeaderPanel: View {
             }
             .buttonStyle(.plain)
             .help(copiedPath ? "Copied!" : "Click to copy path")
+
+            Spacer(minLength: 0)
         }
     }
 
