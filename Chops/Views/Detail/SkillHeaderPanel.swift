@@ -142,6 +142,7 @@ struct SkillHeaderPanel: View {
 
     private var siblingFolders: [String] {
         guard !skill.isRemote else { return [] }
+        guard skill.isDirectory else { return [] }
         let fm = FileManager.default
         let parent = URL(fileURLWithPath: skill.filePath).deletingLastPathComponent()
 
