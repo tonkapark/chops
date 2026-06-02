@@ -2,6 +2,9 @@ import SwiftUI
 import SwiftData
 
 struct SkillListView: View {
+    var focus: FocusState<FocusPane?>.Binding
+    var onCycleFocus: (Bool) -> Void
+
     private enum ActiveAlert: Identifiable {
         case confirmDelete(Skill)
         case confirmDeleteMultiple([Skill])
@@ -252,6 +255,12 @@ struct SkillListView: View {
         .contextMenu(forSelectionType: Skill.self) { skills in
             contextMenu(for: skills)
         }
+        .focused(focus, equals: .list)
+        .onKeyPress(phases: .down) { press in
+            guard press.key == .tab else { return .ignored }
+            onCycleFocus(!press.modifiers.contains(.shift))
+            return .handled
+        }
         .navigationTitle(title)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -398,6 +407,13 @@ struct SkillRow: View {
                 Image(systemName: "star.fill")
                     .font(.caption2)
                     .foregroundStyle(.yellow)
+            }
+
+            if skill.hasUpdateAvailable {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .help("Update available")
             }
 
             Spacer()

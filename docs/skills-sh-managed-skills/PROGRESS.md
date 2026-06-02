@@ -1,6 +1,6 @@
 # skills.sh-Managed Skills Progress
 
-## Status: Phase 3 - In Progress (awaiting manual verify) | Next: Phase 4 (Update detection)
+## Status: Phase 4 - In Progress (awaiting manual verify) | Feature near-complete
 
 ## Quick Reference
 - Research: `docs/skills-sh-managed-skills/RESEARCH.md`
@@ -101,22 +101,25 @@
 ---
 
 ### Phase 4: Update Detection + Update Button
-**Status:** Not Started
+**Status:** In Progress (awaiting manual verify)
 
 #### Tasks
-- [ ] Inspect `vercel-labs/skills` source for the `skillFolderHash` algorithm — decide eager (Path B) vs lazy (Path A) detection
-- [ ] **Path B (preferred):** add `upstreamHash` + `lastCheckedAt` fields; new `UpdateChecker` service that fetches upstream and computes the matching hash
-- [ ] **Path A (fallback):** ship "Check Updates" menu command that runs `npx skills update -g` and parses output
-- [ ] `SkillRow`: orange `arrow.up.circle.fill` after favorite star, gated on `skill.hasUpdateAvailable`
-- [ ] `SkillHeaderPanel`: Update button shown only when `skill.hasUpdateAvailable`
-- [ ] "Check Updates" menu item in `ChopsApp.swift`
-- [ ] Manual verify: hand-edit lock hash → badge appears → click Update → badge clears
-
-#### Tasks Completed
-- (none yet)
+- [x] Inspect `vercel-labs/skills` source for the `skillFolderHash` algorithm — decided **Path B (eager hash compare)**
+- [x] Add `upstreamHash` + `lastUpstreamCheckedAt` fields to `SchemaV1.Skill`; `hasUpdateAvailable` computed property
+- [x] New `UpdateChecker` service: fetches GitHub Trees API per source (batched), looks up folder SHA, stores in `upstreamHash`. `main` branch with `master` fallback
+- [x] `SkillsCLI.update(names:)`
+- [x] `SkillRow`: orange `arrow.up.circle.fill` after favorite star, gated on `skill.hasUpdateAvailable`
+- [x] `SkillHeaderPanel`: Update button shown only when `hasUpdateAvailable`. Runs `SkillsCLI.update`, clears `upstreamHash` on success, triggers rescan
+- [x] "Check for Skill Updates" menu command in `ChopsApp.swift` (separate from Sparkle's own "Check for Updates…")
+- [x] On-launch check via `UpdateChecker.checkAll(in:)` in `ContentView.startScanning`, throttled by 4-hour staleness window
+- [ ] Manual verify: hand-edit lock hash → trigger Check Updates → badge appears → click Update → badge clears
 
 #### Decisions Made
-- (none yet)
+- **Path B (eager hash compare) wins.** Source inspection of `vercel-labs/skills/src/blob.ts:getSkillFolderHashFromTree` shows the hash is just the GitHub tree SHA for the skill's folder. No bespoke hash algorithm to reimplement — one Trees API call per source repo, plus a lookup in the recursive tree response.
+- **Per-source batching.** Skills grouped by `lockSource` so each repo's tree is fetched exactly once per check, even if 12 skills come from the same repo. Default GitHub unauthenticated quota (60 req/h) then covers 60 distinct upstream repos per hour, which is plenty.
+- **6-hour staleness window on launch checks.** Avoids burning rate quota on every relaunch; Force-trigger via "Check for Skill Updates" menu bypasses the window.
+- **Update name uses the canonical directory name, not `skill.name`.** Same robustness argument as Phase 3's remove: frontmatter `name:` can drift; the lock key is the truth.
+- **Post-update we clear `upstreamHash`, not set it equal to lockHash.** The badge clears immediately (hasUpdateAvailable = false when upstreamHash nil), and the next check re-populates with current truth. Cleaner than reasoning about cached vs newly-pulled state.
 
 #### Blockers
 - (none)
@@ -161,6 +164,16 @@
 - `Chops/Models/Skill.swift` — `deleteFromDisk` is now `async throws`; managed skills dispatch to `SkillsCLI.remove`
 - `Chops/Views/Sidebar/SkillListView.swift` — `deleteSkill` and `deleteSkills` wrap in `Task { @MainActor in ... }`
 - `Chops/Views/Detail/SkillDetailView.swift` — `deleteSkill` wraps in `Task { @MainActor in ... }`
+
+**Phase 4:**
+- `Chops/Models/SchemaVersions.swift` — added `upstreamHash`, `lastUpstreamCheckedAt`
+- `Chops/Models/Skill.swift` — `hasUpdateAvailable` computed
+- `Chops/Services/UpdateChecker.swift` — **new**, ~140 lines: GitHub Trees fetch, per-source batching, main→master fallback
+- `Chops/Services/SkillsCLI.swift` — `update(names:)` wrapper
+- `Chops/Views/Sidebar/SkillListView.swift` — orange update badge after favorite star
+- `Chops/Views/Detail/SkillHeaderPanel.swift` — Update button + alert; clears `upstreamHash` on success
+- `Chops/App/ChopsApp.swift` — "Check for Skill Updates" command alongside Sparkle's
+- `Chops/App/ContentView.swift` — on-launch `UpdateChecker.checkAll` (throttled inside)
 
 ## Architectural Decisions
 

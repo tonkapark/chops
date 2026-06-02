@@ -8,6 +8,8 @@ import Foundation
 struct SkillHeaderPanel: View {
     let skill: Skill
     @State private var copiedPath = false
+    @State private var isUpdating = false
+    @State private var updateError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -48,10 +50,71 @@ struct SkillHeaderPanel: View {
 
             Spacer(minLength: 8)
 
+            if skill.hasUpdateAvailable {
+                updateButton
+            }
+
             HStack(spacing: 6) {
                 ForEach(skill.toolSources) { tool in
                     ToolIcon(tool: tool, size: 14, title: tool.displayName)
                 }
+            }
+        }
+        .alert("Update Failed", isPresented: Binding(
+            get: { updateError != nil },
+            set: { if !$0 { updateError = nil } }
+        )) {
+            Button("OK") { updateError = nil }
+        } message: {
+            Text(updateError ?? "")
+        }
+    }
+
+    private var updateButton: some View {
+        Button {
+            runUpdate()
+        } label: {
+            HStack(spacing: 4) {
+                if isUpdating {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: "arrow.up.circle.fill")
+                }
+                Text("Update")
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.orange)
+        }
+        .buttonStyle(.plain)
+        .disabled(isUpdating)
+        .help("Run `npx skills update \(updateName)`")
+    }
+
+    /// CLI uses the canonical directory name (= lock key) as the update
+    /// target. `skill.name` would be the frontmatter title which can differ.
+    private var updateName: String {
+        URL(fileURLWithPath: skill.resolvedPath)
+            .deletingLastPathComponent()
+            .lastPathComponent
+    }
+
+    private func runUpdate() {
+        isUpdating = true
+        updateError = nil
+        Task { @MainActor in
+            defer { isUpdating = false }
+            do {
+                _ = try await SkillsCLI.update(names: [updateName])
+                // The CLI rewrote the lock file → the lockHash now equals
+                // what was upstream when we last checked. Clear the cached
+                // upstream so the next check refreshes it; meanwhile the
+                // badge clears immediately because hasUpdateAvailable
+                // returns false when upstreamHash is nil.
+                skill.upstreamHash = nil
+                skill.lastUpstreamCheckedAt = nil
+                NotificationCenter.default.post(name: .customScanPathsChanged, object: nil)
+            } catch {
+                updateError = error.localizedDescription
             }
         }
     }

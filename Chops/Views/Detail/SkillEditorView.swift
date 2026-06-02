@@ -223,6 +223,15 @@ struct SkillEditorView: View {
 extension Notification.Name {
     static let saveCurrentSkill = Notification.Name("saveCurrentSkill")
     static let toggleSidebar = Notification.Name("toggleSidebar")
+    /// Posted by ContentView when the focus cycle lands on the editor — the
+    /// editor's coordinator makes its NSTextView the window's first responder.
+    static let focusEditorRequested = Notification.Name("focusEditorRequested")
+    /// Posted by the editor's NSTextView when it becomes first responder (e.g.
+    /// the user clicks into it) so ContentView can sync its focus tracking.
+    static let editorBecameFirstResponder = Notification.Name("editorBecameFirstResponder")
+    /// Posted when the user presses Esc in the editor — ContentView returns
+    /// keyboard focus to the skill list.
+    static let focusSkillList = Notification.Name("focusSkillList")
 }
 
 // MARK: - Syntax-highlighted NSTextView wrapper
@@ -291,6 +300,7 @@ struct HighlightedTextEditor: NSViewRepresentable {
         // Set text BEFORE attaching delegate to avoid triggering textDidChange during setup
         textView.string = text
         textView.delegate = context.coordinator
+        context.coordinator.observeFocusRequests()
 
         scrollView.documentView = textView
 
@@ -352,6 +362,26 @@ struct HighlightedTextEditor: NSViewRepresentable {
 
         init(_ parent: HighlightedTextEditor) {
             self.parent = parent
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
+
+        /// Listen for the focus cycle reaching the editor and make the text view
+        /// the window's first responder in response.
+        func observeFocusRequests() {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(focusEditorRequested),
+                name: .focusEditorRequested,
+                object: nil
+            )
+        }
+
+        @objc private func focusEditorRequested() {
+            guard let textView, let window = textView.window else { return }
+            window.makeFirstResponder(textView)
         }
 
         func textDidChange(_ notification: Notification) {

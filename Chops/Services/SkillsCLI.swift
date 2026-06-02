@@ -36,6 +36,16 @@ enum SkillsCLI {
         return try await run(args: args)
     }
 
+    /// `npx skills update <name>... -g -y`. With no names, the CLI updates
+    /// every managed skill in scope. With names, only those listed.
+    @discardableResult
+    static func update(names: [String]) async throws -> String {
+        var args = ["skills", "update"]
+        args.append(contentsOf: names)
+        args.append(contentsOf: ["-g", "-y"])
+        return try await run(args: args)
+    }
+
     // MARK: - Process
 
     private static func run(args: [String]) async throws -> String {

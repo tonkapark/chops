@@ -41,3 +41,11 @@ enum SidebarFilter: Hashable {
     case collection(String)
     case server(String)
 }
+
+/// SwiftUI-focusable panes for keyboard navigation. The editor is an AppKit
+/// `NSTextView` and tracks its own first-responder state, so it is not a case
+/// here — `ContentView` drives the full Sidebar → List → Search → Editor cycle.
+enum FocusPane: Hashable {
+    case sidebar
+    case list
+}

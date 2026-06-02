@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct SidebarView: View {
+    var focus: FocusState<FocusPane?>.Binding
+    var onCycleFocus: (Bool) -> Void
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Skill.name) private var allSkills: [Skill]
@@ -113,6 +115,12 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .focused(focus, equals: .sidebar)
+        .onKeyPress(phases: .down) { press in
+            guard press.key == .tab else { return .ignored }
+            onCycleFocus(!press.modifiers.contains(.shift))
+            return .handled
+        }
         .navigationTitle("Chops")
     }
 

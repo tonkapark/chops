@@ -39,6 +39,11 @@ enum SchemaV1: VersionedSchema {
         var lockInstalledAt: Date?
         var lockUpdatedAt: Date?
         var lockHash: String?
+        /// GitHub tree SHA of the skill's upstream folder, fetched on demand
+        /// by `UpdateChecker`. Differs from `lockHash` when an update is
+        /// available. Nil = never checked.
+        var upstreamHash: String?
+        var lastUpstreamCheckedAt: Date?
 
         init(
             filePath: String,

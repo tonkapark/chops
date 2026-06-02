@@ -80,6 +80,14 @@ struct ChopsApp: App {
             }
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)
+                Button("Check for Skill Updates") {
+                    Task {
+                        await UpdateChecker.checkAll(
+                            in: sharedModelContainer.mainContext,
+                            force: true
+                        )
+                    }
+                }
             }
             CommandGroup(after: .help) {
                 Toggle("Enable Debug Logging", isOn: $debugLoggingEnabled)
