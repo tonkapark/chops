@@ -120,6 +120,7 @@
 - **6-hour staleness window on launch checks.** Avoids burning rate quota on every relaunch; Force-trigger via "Check for Skill Updates" menu bypasses the window.
 - **Update name uses the canonical directory name, not `skill.name`.** Same robustness argument as Phase 3's remove: frontmatter `name:` can drift; the lock key is the truth.
 - **Post-update we clear `upstreamHash`, not set it equal to lockHash.** The badge clears immediately (hasUpdateAvailable = false when upstreamHash nil), and the next check re-populates with current truth. Cleaner than reasoning about cached vs newly-pulled state.
+- **Plain string inequality for `hasUpdateAvailable`.** Upstream tree SHAs are always 40 chars; any deviation (length, value) means the lock is out of sync with upstream — exactly when we want the badge to fire.
 
 #### Blockers
 - (none)

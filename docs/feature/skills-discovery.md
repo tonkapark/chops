@@ -25,3 +25,11 @@ A major re-write of skills registry browsing after 1.15.0
 **Resilience**
   - If the trending scrape fails, the sheet falls back cleanly to the live search path — Browse never breaks
   - An expired cache simply re-scrapes; no stale data is served
+
+**Install pipeline**
+
+Discovery is one end of a managed-skill lifecycle: install goes through the
+`npx skills` CLI, and Chops then tracks, updates, and removes those skills
+through the same CLI. See
+[skills-cli-managed-skills](skills-cli-managed-skills.md) for the design
+and setup details.

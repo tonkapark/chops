@@ -110,18 +110,12 @@ extension Skill {
     /// True when the upstream tree SHA differs from the installed lock hash.
     /// Populated by `UpdateChecker`; nil `upstreamHash` means we haven't
     /// checked yet, so we conservatively report no update available.
-    ///
-    /// The CLI's lock writer occasionally stores a 39-char SHA where the
-    /// upstream is the full 40-char value (truncation bug, observed on
-    /// `playwright-cli` and `grill-me`). Prefix-comparing at the shorter
-    /// length keeps that from masquerading as an available update.
     var hasUpdateAvailable: Bool {
         guard let upstream = upstreamHash,
               let local = lockHash,
               !upstream.isEmpty, !local.isEmpty
         else { return false }
-        let length = min(upstream.count, local.count)
-        return upstream.prefix(length) != local.prefix(length)
+        return upstream != local
     }
 
     private var isBundledOpenClawSkill: Bool {
