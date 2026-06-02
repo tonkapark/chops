@@ -13,7 +13,7 @@ struct SkillHeaderPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             headerRow
             locationRow
-            if sourceLinkURL != nil {
+            if displaySourceURL != nil {
                 sourceRow
             }
             if !siblingFolders.isEmpty {
@@ -119,24 +119,33 @@ struct SkillHeaderPanel: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Button {
-                if let url = sourceLinkURL {
-                    NSWorkspace.shared.open(url)
+            if let url = sourceLinkURL {
+                Button { NSWorkspace.shared.open(url) } label: {
+                    HStack(spacing: 4) {
+                        Text(displaySourceURL ?? "")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Image(systemName: "arrow.up.forward")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(displaySourceURL ?? "")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Image(systemName: "arrow.up.forward")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                }
+                .buttonStyle(.plain)
+                .help(skill.sourceURL ?? "")
+            } else {
+                // Lock entry stored a non-URL source (e.g. a local path or a
+                // malformed string). Render plain text so the row still shows
+                // provenance — clicking it just wouldn't do anything useful.
+                Text(displaySourceURL ?? "")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(skill.sourceURL ?? "")
+                    .textSelection(.enabled)
             }
-            .buttonStyle(.plain)
-            .help(skill.sourceURL ?? "")
 
             Spacer(minLength: 0)
         }

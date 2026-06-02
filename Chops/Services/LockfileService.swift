@@ -59,7 +59,28 @@ enum LockfileService {
         "\(NSHomeDirectory())/.agents/.skill-lock.json"
     }
 
+    /// Top-level shape of `.skill-lock.json`. Skill entries decode lossily —
+    /// a single corrupt entry (bad date, type mismatch) drops only that one
+    /// instead of disabling managed-skill detection across the whole file.
     private struct Lockfile: Decodable {
         let skills: [String: Entry]
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let lossy = try container.decode([String: LossyEntry].self, forKey: .skills)
+            self.skills = lossy.compactMapValues(\.value)
+        }
+
+        enum CodingKeys: String, CodingKey { case skills }
+    }
+
+    /// Wraps `Entry` so one bad value doesn't bring down the whole dict
+    /// decode. Failure to decode an `Entry` becomes a nil `value`.
+    private struct LossyEntry: Decodable {
+        let value: Entry?
+
+        init(from decoder: Decoder) throws {
+            self.value = try? Entry(from: decoder)
+        }
     }
 }

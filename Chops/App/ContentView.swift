@@ -52,6 +52,11 @@ struct ContentView: View {
         .frame(minWidth: 900, minHeight: 500)
         .onReceive(NotificationCenter.default.publisher(for: .customScanPathsChanged)) { _ in
             scanner?.scanAll()
+            // Fires before the scan finishes, but if the pending skill is
+            // already in the query (reinstall of a row that was never removed)
+            // the selection happens immediately. New installs still get caught
+            // by the count-change observer below once the scan inserts them.
+            applyPendingSkillSelection(in: skills)
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
             columnVisibility = columnVisibility == .doubleColumn ? .all : .doubleColumn
@@ -62,11 +67,13 @@ struct ContentView: View {
     }
 
     /// When the user installs from the registry, the sheet records the
-    /// canonical path of the new skill in `pendingSkillSelectionPath`. The
-    /// scan that follows surfaces the SwiftData row asynchronously — once it
-    /// appears here, we select it and clear the pending state. Observed via
-    /// `skills.count` rather than the array itself because SwiftData's @Query
-    /// can update model instances in place without changing array identity.
+    /// canonical path of the new skill in `pendingSkillSelectionPath`. We try
+    /// to resolve it both on scan-trigger (for reinstalls where the row
+    /// already exists) and on `skills.count` change (for genuinely new rows).
+    /// SwiftData's @Query updates model instances in place without changing
+    /// array identity, so a plain `.onChange(of: skills)` would miss in-place
+    /// updates — count works for inserts, and the notification path covers
+    /// the no-insert case.
     private func applyPendingSkillSelection(in skills: [Skill]) {
         guard let path = appState.pendingSkillSelectionPath,
               let match = skills.first(where: { $0.resolvedPath == path })
@@ -116,11 +123,11 @@ struct ContentView: View {
         if fm.fileExists(atPath: claudeDesktopSessions) {
             allPaths.append(claudeDesktopSessions)
         }
-        // The `npx skills` global lock file lives next to the skills directory,
-        // not inside it, so the per-tool watches above miss its edits.
-        if fm.fileExists(atPath: LockfileService.globalLockPath) {
-            allPaths.append(LockfileService.globalLockPath)
-        }
+        // The `npx skills` global lock file lives at `~/.agents/.skill-lock.json`,
+        // a sibling of `~/.agents/skills/` (which we already watch). Watch the
+        // parent `~/.agents/` so lock-file create / edit / delete events
+        // trigger a rescan even if the file didn't exist when Chops launched.
+        allPaths.append("\(home)/.agents")
         allPaths = Array(Set(allPaths)).sorted()
 
         let watcher = FileWatcher { _ in

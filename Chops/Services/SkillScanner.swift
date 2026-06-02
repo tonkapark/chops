@@ -555,15 +555,21 @@ final class SkillScanner {
     }
 
     /// Build a `canonical SKILL.md path → lock entry` map for the global lock
-    /// file. Nil-valued entries are returned as the absence of a key, so
-    /// applyLockMetadata receives nil for unmanaged skills and clears any
-    /// stale fields.
+    /// file. Each key is symlink-resolved with the same machinery the scanner
+    /// uses for `resolvedPath` — otherwise a symlinked `~/.agents` (e.g.
+    /// pointed at iCloud or an external drive) would produce divergent keys
+    /// and managed metadata would never attach.
     private func lockEntriesByCanonicalPath() -> [String: LockfileService.Entry] {
         let entries = LockfileService.loadGlobal()
         guard !entries.isEmpty else { return [:] }
-        let agentsSkillsDir = "\(NSHomeDirectory())/.agents/skills"
+        let agentsSkillsDir = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent(".agents/skills")
         return entries.reduce(into: [:]) { dict, pair in
-            dict["\(agentsSkillsDir)/\(pair.key)/SKILL.md"] = pair.value
+            let canonical = agentsSkillsDir
+                .appendingPathComponent("\(pair.key)/SKILL.md")
+                .resolvingSymlinksInPath()
+                .path
+            dict[canonical] = pair.value
         }
     }
 
