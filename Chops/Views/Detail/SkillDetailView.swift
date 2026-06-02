@@ -94,6 +94,7 @@ struct SkillDetailView: View {
 
         VStack(spacing: 0) {
             SkillHeaderPanel(skill: skill)
+                .id(skill.filePath)
 
             ZStack(alignment: .bottomTrailing) {
                 if preferPreview {
