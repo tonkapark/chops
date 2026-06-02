@@ -21,4 +21,12 @@ struct ChopsSettings {
         get { UserDefaults.standard.bool(forKey: "includePluginSkills") }
         set { UserDefaults.standard.set(newValue, forKey: "includePluginSkills") }
     }
+
+    /// When true, Chops sets `DISABLE_TELEMETRY=1` for every `npx skills`
+    /// subprocess so the CLI skips its anonymous usage reporting. Default
+    /// false matches the CLI's documented default behaviour.
+    static var disableSkillsCLITelemetry: Bool {
+        get { UserDefaults.standard.bool(forKey: "disableSkillsCLITelemetry") }
+        set { UserDefaults.standard.set(newValue, forKey: "disableSkillsCLITelemetry") }
+    }
 }

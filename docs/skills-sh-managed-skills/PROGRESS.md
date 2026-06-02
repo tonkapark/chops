@@ -1,6 +1,6 @@
 # skills.sh-Managed Skills Progress
 
-## Status: Phase 2 - Completed | Next: Phase 3 (Remove via CLI)
+## Status: Phase 2a - In Progress | Next: Phase 3 (Remove via CLI)
 
 ## Quick Reference
 - Research: `docs/skills-sh-managed-skills/RESEARCH.md`
@@ -60,6 +60,25 @@
 
 ---
 
+### Phase 2a: Disable CLI Telemetry (opt-in)
+**Status:** In Progress (awaiting manual verify)
+
+#### Tasks
+- [x] Add `disableSkillsCLITelemetry` UserDefaults-backed accessor on `ChopsSettings`
+- [x] Add "Disable npx skills telemetry" Toggle to `SettingsView.generalSettings`, backed by `@AppStorage("disableSkillsCLITelemetry")`
+- [x] Inject `DISABLE_TELEMETRY=1` in `SkillsCLI.sanitizedEnvironment()` when the setting is true
+- [ ] Manual verify: toggle on → install a skill → confirm setting persists across relaunches
+
+#### Decisions Made
+- Toggle is **opt-in** (default false) — Chops does not silently disable a documented CLI default. Mirrors the CLI's own behaviour when the flag is unset.
+- The flag is read **at subprocess time** (not cached), so flipping it takes effect on the very next install/remove/update — no relaunch needed.
+- The env variable is only set when enabled. When disabled we don't pass `DISABLE_TELEMETRY=0` either, so the CLI's default kicks in unmodified.
+
+#### Blockers
+- (none)
+
+---
+
 ### Phase 3: Remove via CLI
 **Status:** Not Started
 
@@ -113,6 +132,7 @@
 - Phase 4's hash-vs-lazy decision deferred to start of phase (needs upstream source inspection)
 - **Phase 1 completed.** Lock metadata wired through scan → schema → header. User confirmed visually in dev build.
 - **Phase 2 completed.** Install path rewritten via `SkillsCLI`. Initial test surfaced two problems: the CLI's universal-vs-symlinked agent model made per-agent checkboxes misleading, and the inherited shell's `AI_AGENT` env var was silently forcing every install to claude-code. Fixed by stripping the env, removing the checkboxes entirely, defaulting to global install, enlarging the preview, and switching to `.allSkills` filter post-install so the auto-highlight is always visible.
+- **Phase 2a in progress.** Added opt-in "Disable npx skills telemetry" toggle under Settings → General. When on, `DISABLE_TELEMETRY=1` is injected into every `npx skills` subprocess via the existing `sanitizedEnvironment` path. Awaiting visual verification.
 
 ---
 
@@ -131,6 +151,11 @@
 - `Chops/Views/Shared/RegistrySheet.swift` — agent checkboxes removed, preview enlarged, install awaits CLI, sets `pendingSkillSelectionPath`, forces `.allSkills` filter, sheet height 500→620
 - `Chops/App/AppState.swift` — added `pendingSkillSelectionPath`
 - `Chops/App/ContentView.swift` — `.onChange(of: skills.count)` resolves pending selection
+
+**Phase 2a:**
+- `Chops/Models/ChopsSettings.swift` — added `disableSkillsCLITelemetry` UserDefaults accessor
+- `Chops/Views/Settings/SettingsView.swift` — Toggle in General tab, bound via `@AppStorage`
+- `Chops/Services/SkillsCLI.swift` — `sanitizedEnvironment` injects `DISABLE_TELEMETRY=1` when the setting is true
 
 ## Architectural Decisions
 

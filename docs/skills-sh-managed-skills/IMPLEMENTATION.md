@@ -21,6 +21,7 @@ The design hinges on one principle from the user's brief: **avoid creating too m
 
 1. **Detect + display** — Parse the lock file, attach metadata during the scan, show a Source row in the detail header. *User sees: source URL appears under Location for managed skills. Nowhere else in the UI changes.*
 2. **Install via CLI** — Replace `SkillRegistry.install` with `SkillsCLI.add`. *User sees: installing from the registry sheet runs `npx skills add` in the background; the new skill appears with its source URL filled in.*
+2a. **Disable CLI telemetry (opt-in)** — Settings toggle that injects `DISABLE_TELEMETRY=1` into every `npx skills` subprocess. *User sees: a "Disable npx skills telemetry" checkbox under Settings → General.*
 3. **Remove via CLI** — Branch `Skill.deleteFromDisk` so managed skills route to `npx skills remove`. *User sees: deleting a managed skill from the UI cleans up the lock file too — verifiable with `cat ~/.agents/.skill-lock.json`.*
 4. **Update detection + Update button** — Compare lock-file hash to upstream, badge stale skills, add an Update button that runs `npx skills update`. *User sees: an orange up-arrow on skills with newer upstream; clicking Update refreshes them.*
 
@@ -98,6 +99,37 @@ This is the highest-value swap: every new install from this point forward become
 - `Chops/Models/ToolSource.swift` — agent-ID map.
 - `Chops/Services/SkillRegistry.swift` — `install` rewritten, old code deleted.
 - `Chops/Views/Shared/RegistrySheet.swift` — `await` call site, error rendering, optional output streaming.
+
+---
+
+## Phase 2a: Disable CLI Telemetry (opt-in)
+
+### Objective
+
+Give the user a single checkbox in Settings → General that sets `DISABLE_TELEMETRY=1` for every `npx skills` subprocess Chops spawns.
+
+### Rationale
+
+`npx skills` reports anonymous usage telemetry by default. Some users (and some corporate environments) want this off. Wiring it through Chops's existing `SkillsCLI` env injection keeps the opt-out in one place — all current and future CLI calls inherit it automatically. Lands as 2a (not Phase 3) because it's a small additive bolt-on to the Phase 2 subprocess machinery, not its own end-to-end feature slice.
+
+### Tasks
+
+- [ ] Add `disableSkillsCLITelemetry: Bool` accessor on `ChopsSettings` (UserDefaults-backed, default false).
+- [ ] In `SettingsView.generalSettings`, add a `Toggle("Disable npx skills telemetry", isOn:)` backed by `@AppStorage("disableSkillsCLITelemetry")`. Include a `.help(...)` tooltip explaining the effect.
+- [ ] In `SkillsCLI.sanitizedEnvironment()`, after sanitising, set `sanitized["DISABLE_TELEMETRY"] = "1"` when `ChopsSettings.disableSkillsCLITelemetry` is true. Read at call-time so the toggle takes effect without a relaunch.
+- [ ] Manual verify: toggle on → run an install → ANSI-stripped CLI output should not include any telemetry-related lines (or, more reliably, the user reports the CLI's documented behaviour change).
+
+### Success Criteria
+
+- The toggle persists across app restarts.
+- When enabled, `DISABLE_TELEMETRY=1` is present in the env of every `npx skills` subprocess. When disabled, it is absent (we don't want to set a Chops-specific value that would mask the CLI's documented default).
+- No other CLI behaviour changes.
+
+### Files Likely Affected
+
+- `Chops/Models/ChopsSettings.swift` — new accessor.
+- `Chops/Views/Settings/SettingsView.swift` — Toggle + @AppStorage binding.
+- `Chops/Services/SkillsCLI.swift` — env injection in `sanitizedEnvironment`.
 
 ---
 

@@ -44,6 +44,7 @@ struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .general
     @State private var customPaths: [String] = []
     @AppStorage("defaultTool") private var defaultTool: ToolSource = .claude
+    @AppStorage("disableSkillsCLITelemetry") private var disableSkillsCLITelemetry = false
     @FocusState private var navFocused: Bool
 
     var body: some View {
@@ -122,6 +123,9 @@ struct SettingsView: View {
                 }
             }
             .frame(maxWidth: 300)
+
+            Toggle("Disable npx skills telemetry", isOn: $disableSkillsCLITelemetry)
+                .help("Sets DISABLE_TELEMETRY=1 for every `npx skills` subprocess Chops runs (install, remove, update).")
         }
         .padding()
     }

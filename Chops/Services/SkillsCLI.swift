@@ -87,13 +87,18 @@ enum SkillsCLI {
     /// flags we pass when one is set. Chops inherits whatever shell launched
     /// it — so when Chops is launched from a Claude Code or Cursor session,
     /// every install would route to that agent regardless of user selection.
-    /// Strip the well-known auto-detection vars before spawning.
+    /// Strip the well-known auto-detection vars before spawning. Also injects
+    /// `DISABLE_TELEMETRY=1` when the user opts out of CLI telemetry.
     private static func sanitizedEnvironment() -> [String: String] {
         let env = ProcessInfo.processInfo.environment
         let prefixes = ["CLAUDE_CODE", "CURSOR", "CODEX", "WINDSURF", "OPENCODE"]
         let exact: Set<String> = ["AI_AGENT", "CLAUDECODE", "CLINE", "ZED", "AMP"]
-        return env.filter { key, _ in
+        var sanitized = env.filter { key, _ in
             !exact.contains(key) && !prefixes.contains(where: { key.hasPrefix($0) })
         }
+        if ChopsSettings.disableSkillsCLITelemetry {
+            sanitized["DISABLE_TELEMETRY"] = "1"
+        }
+        return sanitized
     }
 }
