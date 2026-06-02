@@ -2,22 +2,6 @@ import AppKit
 
 final class ChopsTextView: NSTextView {
 
-    // MARK: - Focus
-
-    override func becomeFirstResponder() -> Bool {
-        let became = super.becomeFirstResponder()
-        if became {
-            NotificationCenter.default.post(name: .editorBecameFirstResponder, object: nil)
-        }
-        return became
-    }
-
-    /// Esc hands keyboard focus back to the skill list rather than triggering
-    /// the default text-completion cancel.
-    override func cancelOperation(_ sender: Any?) {
-        NotificationCenter.default.post(name: .focusSkillList, object: nil)
-    }
-
     // MARK: - Cursor
 
     override func mouseMoved(with event: NSEvent) {
