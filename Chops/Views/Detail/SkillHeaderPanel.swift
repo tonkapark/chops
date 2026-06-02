@@ -138,10 +138,6 @@ struct SkillHeaderPanel: View {
         return cleaned.lowercased().hasPrefix("v") ? cleaned : "v\(cleaned)"
     }
 
-    private var toolSourcesSummary: String {
-        skill.toolSources.map(\.displayName).joined(separator: ", ")
-    }
-
     private var siblingFolders: [String] {
         guard !skill.isRemote else { return [] }
         guard skill.isDirectory else { return [] }
