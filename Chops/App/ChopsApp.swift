@@ -53,6 +53,11 @@ struct ChopsApp: App {
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
 
+                Button("Filter Skills") {
+                    NotificationCenter.default.post(name: .filterSkills, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+
                 Button("Command Palette") {
                     appState.showingCommandPalette = true
                 }

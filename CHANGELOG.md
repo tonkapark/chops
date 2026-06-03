@@ -15,6 +15,7 @@
 - Orange up-arrow badge appears on registry-installed skills when the upstream has moved past your installed version; click **Update** in the detail header to pull the latest
 - New **Check for Skill Updates** command in the app menu force-refreshes update status for every managed skill
 - Optional **Disable npx skills telemetry** toggle under Settings → General sets `DISABLE_TELEMETRY=1` for every `npx skills` subprocess Chops runs
+- Added keyboard shortcuts: ⌘⇧F search library
 
 ## [1.15.0] - 2026-04-28
 

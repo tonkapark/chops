@@ -223,6 +223,7 @@ struct SkillEditorView: View {
 extension Notification.Name {
     static let saveCurrentSkill = Notification.Name("saveCurrentSkill")
     static let toggleSidebar = Notification.Name("toggleSidebar")
+    static let filterSkills = Notification.Name("filterSkills")
 }
 
 // MARK: - Syntax-highlighted NSTextView wrapper

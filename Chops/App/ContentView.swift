@@ -8,6 +8,12 @@ struct ContentView: View {
     @State private var scanner: SkillScanner?
     @State private var fileWatcher: FileWatcher?
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @FocusState private var searchFocused: Bool
+    // SwiftUI doesn't reliably back-bind the `.searchable` field losing focus,
+    // so `searchFocused` reads `true` forever after the first press. Bumping
+    // an Int on every shortcut press forces the false→true cycle below to
+    // re-fire, which makes the shortcut idempotent.
+    @State private var searchFocusBump: Int = 0
 
     var body: some View {
         @Bindable var appState = appState
@@ -34,6 +40,11 @@ struct ContentView: View {
             }
         }
         .searchable(text: $appState.searchText, prompt: "Search skills...")
+        .searchFocused($searchFocused)
+        .onChange(of: searchFocusBump) { _, _ in
+            searchFocused = false
+            DispatchQueue.main.async { searchFocused = true }
+        }
         .onAppear {
             startScanning()
         }
@@ -66,6 +77,9 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
             columnVisibility = columnVisibility == .doubleColumn ? .all : .doubleColumn
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .filterSkills)) { _ in
+            searchFocusBump &+= 1
         }
         .onChange(of: skills.count) { _, _ in
             applyPendingSkillSelection(in: skills)
