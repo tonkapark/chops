@@ -87,7 +87,7 @@ struct SkillHeaderPanel: View {
         }
         .buttonStyle(.plain)
         .disabled(isUpdating)
-        .help("Run `npx skills update \(updateName)`")
+        .help(updateHelpText)
     }
 
     /// CLI uses the canonical directory name (= lock key) as the update
@@ -98,13 +98,25 @@ struct SkillHeaderPanel: View {
             .lastPathComponent
     }
 
+    /// Project skills run inside their scope dir without `-g`; global skills
+    /// pass `-g` and inherit cwd. Surface both forms so the tooltip matches
+    /// what actually runs.
+    private var updateHelpText: String {
+        if skill.isProjectLockScope, let dir = skill.lockScopeDir {
+            let display = dir.path.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+            return "Run `cd \(display) && npx skills update \(updateName)`"
+        }
+        return "Run `npx skills update \(updateName) -g`"
+    }
+
     private func runUpdate() {
         isUpdating = true
         updateError = nil
         Task { @MainActor in
             defer { isUpdating = false }
             do {
-                _ = try await SkillsCLI.update(names: [updateName])
+                let projectDir = skill.isProjectLockScope ? skill.lockScopeDir : nil
+                _ = try await SkillsCLI.update(names: [updateName], in: projectDir)
                 // The CLI rewrote the lock file → the lockHash now equals
                 // what was upstream when we last checked. Clear the cached
                 // upstream so the next check refreshes it; meanwhile the

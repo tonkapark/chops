@@ -123,6 +123,29 @@ extension Skill {
             || filePath.hasPrefix("/usr/local/lib/node_modules/openclaw/skills/")
     }
 
+    /// The directory the `npx skills` CLI should run inside to target this
+    /// skill's lock file. Computed from `resolvedPath` shape — managed skills
+    /// always live at `<scope>/.agents/skills/<name>/SKILL.md`. Returns nil
+    /// when the path isn't `.agents/skills`-shaped (plugin or custom-source
+    /// skills), in which case CLI operations don't apply.
+    var lockScopeDir: URL? {
+        let resolved = URL(fileURLWithPath: resolvedPath)
+        let skillsDir = resolved.deletingLastPathComponent().deletingLastPathComponent()
+        let agentsDir = skillsDir.deletingLastPathComponent()
+        guard skillsDir.lastPathComponent == "skills",
+              agentsDir.lastPathComponent == ".agents"
+        else { return nil }
+        return agentsDir.deletingLastPathComponent()
+    }
+
+    /// True when this skill's lock file lives in a project (not `~/.agents/`).
+    /// CLI invocations for project skills need `cwd = lockScopeDir` and no
+    /// `-g` flag; global skills need `-g` and inherit cwd.
+    var isProjectLockScope: Bool {
+        guard let scope = lockScopeDir else { return false }
+        return scope.path != NSHomeDirectory()
+    }
+
     /// For project-level skills, extracts the project name from the path.
     /// e.g. ~/Development/every-expert/.claude/skills/foo/SKILL.md → "every-expert"
     var projectName: String? {
@@ -264,12 +287,15 @@ extension Skill {
     func deleteFromDisk() async throws {
         // Managed skills route through the CLI so the lock file and the
         // per-agent symlinks stay in sync. Lock key = canonical directory
-        // name (`~/.agents/skills/<key>/SKILL.md`).
+        // name (`<scope>/.agents/skills/<key>/SKILL.md`). Project skills
+        // pass their scope dir so the CLI rewrites the project lock file
+        // instead of looking the entry up under `-g`.
         if lockSource != nil {
             let lockKey = URL(fileURLWithPath: resolvedPath)
                 .deletingLastPathComponent()
                 .lastPathComponent
-            try await SkillsCLI.remove(name: lockKey, agentIds: [])
+            let projectDir = isProjectLockScope ? lockScopeDir : nil
+            try await SkillsCLI.remove(name: lockKey, agentIds: [], in: projectDir)
             return
         }
 

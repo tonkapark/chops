@@ -24,31 +24,41 @@ enum SkillsCLI {
         try await run(args: ["skills", "add", source, "-g", "-s", skillId, "-y"])
     }
 
-    /// `npx skills remove <name> -g -y -a <agent>...`. Empty `agentIds` lets
+    /// `npx skills remove <name> -y -a <agent>...`. Empty `agentIds` lets
     /// the CLI default to removing from every detected agent — passing `*`
     /// here is rejected by the CLI as "Invalid agents".
+    ///
+    /// `projectDir == nil` ⇒ global scope (`-g`, inherited cwd, operates on
+    /// `~/.agents/.skill-lock.json`). Non-nil ⇒ run inside that directory
+    /// with no `-g` flag so the CLI targets `<projectDir>/skills-lock.json`.
     @discardableResult
-    static func remove(name: String, agentIds: [String]) async throws -> String {
-        var args = ["skills", "remove", name, "-g", "-y"]
+    static func remove(name: String, agentIds: [String], in projectDir: URL? = nil) async throws -> String {
+        var args = ["skills", "remove", name, "-y"]
+        if projectDir == nil { args.append("-g") }
         for id in agentIds {
             args.append(contentsOf: ["-a", id])
         }
-        return try await run(args: args)
+        return try await run(args: args, in: projectDir)
     }
 
-    /// `npx skills update <name>... -g -y`. With no names, the CLI updates
+    /// `npx skills update <name>... -y`. With no names, the CLI updates
     /// every managed skill in scope. With names, only those listed.
+    ///
+    /// `projectDir == nil` ⇒ global scope (`-g`, inherited cwd, operates on
+    /// `~/.agents/.skill-lock.json`). Non-nil ⇒ run inside that directory
+    /// with no `-g` flag so the CLI targets `<projectDir>/skills-lock.json`.
     @discardableResult
-    static func update(names: [String]) async throws -> String {
+    static func update(names: [String], in projectDir: URL? = nil) async throws -> String {
         var args = ["skills", "update"]
         args.append(contentsOf: names)
-        args.append(contentsOf: ["-g", "-y"])
-        return try await run(args: args)
+        args.append("-y")
+        if projectDir == nil { args.append("-g") }
+        return try await run(args: args, in: projectDir)
     }
 
     // MARK: - Process
 
-    private static func run(args: [String]) async throws -> String {
+    private static func run(args: [String], in projectDir: URL? = nil) async throws -> String {
         guard let npx = locateNpx() else { throw CLIError.npxMissing }
 
         let env = sanitizedEnvironment()
@@ -58,6 +68,7 @@ enum SkillsCLI {
             proc.executableURL = npx
             proc.arguments = args
             proc.environment = env
+            if let projectDir { proc.currentDirectoryURL = projectDir }
             let pipe = Pipe()
             proc.standardOutput = pipe
             proc.standardError = pipe

@@ -1,8 +1,12 @@
 import Foundation
 
-/// Reads the `npx skills` CLI global lock file at `~/.agents/.skill-lock.json`
-/// and exposes its entries keyed by skill name. The CLI owns this file; Chops
-/// only observes it.
+/// Reads `npx skills` CLI lock files and exposes their entries keyed by skill
+/// name. The CLI owns these files; Chops only observes them.
+///
+/// Two formats are read by the same decoder:
+/// - Global: `~/.agents/.skill-lock.json` (version 3, full metadata).
+/// - Project: `<project>/skills-lock.json` (version 1, no timestamps/URL,
+///   stores the folder hash under `computedHash` instead of `skillFolderHash`).
 enum LockfileService {
     struct Entry: Decodable {
         let source: String?
@@ -12,14 +16,58 @@ enum LockfileService {
         let skillFolderHash: String?
         let installedAt: Date?
         let updatedAt: Date?
+        let hashKind: HashKind
+
+        /// Which algorithm produced `skillFolderHash`. Global lock files
+        /// store the GitHub tree SHA (SHA-1, 40 chars); project lock files
+        /// store a locally-computed content SHA-256 (64 chars). They are
+        /// incomparable, so the update check has to branch on which one
+        /// the entry holds.
+        enum HashKind {
+            case treeSHA
+            case contentSHA
+            case none
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case source, sourceType, sourceUrl, skillPath
+            case skillFolderHash, computedHash, installedAt, updatedAt
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            source = try c.decodeIfPresent(String.self, forKey: .source)
+            sourceType = try c.decodeIfPresent(String.self, forKey: .sourceType)
+            sourceUrl = try c.decodeIfPresent(String.self, forKey: .sourceUrl)
+            skillPath = try c.decodeIfPresent(String.self, forKey: .skillPath)
+            let folderSHA = try c.decodeIfPresent(String.self, forKey: .skillFolderHash)
+            let computedSHA = try c.decodeIfPresent(String.self, forKey: .computedHash)
+            skillFolderHash = folderSHA ?? computedSHA
+            if folderSHA != nil {
+                hashKind = .treeSHA
+            } else if computedSHA != nil {
+                hashKind = .contentSHA
+            } else {
+                hashKind = .none
+            }
+            installedAt = try c.decodeIfPresent(Date.self, forKey: .installedAt)
+            updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        }
     }
 
-    /// Returns lock entries keyed by skill name. Empty on missing or
+    /// Returns global lock entries keyed by skill name. Empty on missing or
     /// unparseable lock file — the CLI is the enforcement layer, not us.
     static func loadGlobal() -> [String: Entry] {
-        let url = URL(fileURLWithPath: NSHomeDirectory())
-            .appendingPathComponent(".agents/.skill-lock.json")
+        loadEntries(at: URL(fileURLWithPath: globalLockPath))
+    }
 
+    /// Returns project-scoped lock entries keyed by skill name from
+    /// `<projectDir>/skills-lock.json`. Empty when the file is missing.
+    static func loadProject(_ projectDir: URL) -> [String: Entry] {
+        loadEntries(at: projectDir.appendingPathComponent("skills-lock.json"))
+    }
+
+    private static func loadEntries(at url: URL) -> [String: Entry] {
         guard let data = try? Data(contentsOf: url) else { return [:] }
 
         let decoder = JSONDecoder()

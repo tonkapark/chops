@@ -82,26 +82,33 @@ final class SkillScanner {
         let customPaths = UserDefaults.standard.stringArray(forKey: "customScanPaths") ?? []
         let includePlugins = ChopsSettings.includePluginSkills
         scanTask = Task.detached { [weak self] in
-            let results = Self.collectAllSkills(customPaths: customPaths, includePlugins: includePlugins)
+            let collected = Self.collectAllSkills(customPaths: customPaths, includePlugins: includePlugins)
             guard !Task.isCancelled else { return }
             let elapsed = CFAbsoluteTimeGetCurrent() - start
-            AppLogger.scanning.notice("File collection done: \(results.count) skills in \(String(format: "%.2f", elapsed))s")
+            AppLogger.scanning.notice("File collection done: \(collected.results.count) skills in \(String(format: "%.2f", elapsed))s")
 
             await MainActor.run {
                 guard let self, self.scanGeneration == generation else { return }
-                self.applyResults(results)
+                self.applyResults(collected.results, projectLockEntries: collected.projectLockEntries)
                 let total = CFAbsoluteTimeGetCurrent() - start
-                AppLogger.scanning.notice("Scan complete: \(results.count) skills applied in \(String(format: "%.2f", total))s")
+                AppLogger.scanning.notice("Scan complete: \(collected.results.count) skills applied in \(String(format: "%.2f", total))s")
             }
         }
     }
 
-    /// Pure filesystem I/O — safe to run off main thread.
-    private static func collectAllSkills(customPaths: [String], includePlugins: Bool) -> [ScannedSkillData] {
+    /// Pure filesystem I/O — safe to run off main thread. Returns scanned
+    /// skills alongside any project-level lock entries discovered while
+    /// walking custom scan paths, keyed by canonical resolved SKILL.md path
+    /// (the same value the scanner uses for `resolvedPath`).
+    private static func collectAllSkills(
+        customPaths: [String],
+        includePlugins: Bool
+    ) -> (results: [ScannedSkillData], projectLockEntries: [String: LockfileService.Entry]) {
         var results: [ScannedSkillData] = []
+        var projectLockEntries: [String: LockfileService.Entry] = [:]
 
         for tool in ToolSource.allCases where tool != .custom {
-            guard !Task.isCancelled else { return results }
+            guard !Task.isCancelled else { return (results, projectLockEntries) }
             guard tool.isInstalled else {
                 continue
             }
@@ -131,14 +138,22 @@ final class SkillScanner {
         }
 
         for path in customPaths {
-            guard !Task.isCancelled else { return results }
-            collectFromCustomDirectory(URL(fileURLWithPath: path), into: &results)
+            guard !Task.isCancelled else { return (results, projectLockEntries) }
+            collectFromCustomDirectory(
+                URL(fileURLWithPath: path),
+                into: &results,
+                projectLockEntries: &projectLockEntries
+            )
         }
 
-        return results
+        return (results, projectLockEntries)
     }
 
-    private static func collectFromCustomDirectory(_ directory: URL, into results: inout [ScannedSkillData]) {
+    private static func collectFromCustomDirectory(
+        _ directory: URL,
+        into results: inout [ScannedSkillData],
+        projectLockEntries: inout [String: LockfileService.Entry]
+    ) {
         let fm = FileManager.default
 
         collectDirectSkillsFromCustomDirectory(directory, into: &results)
@@ -170,6 +185,28 @@ final class SkillScanner {
                     collectFromDirectory(probePath, toolSource: probe.tool, isGlobal: false, kind: probe.kind, into: &results)
                 }
             }
+
+            collectProjectLockEntries(projectURL: project, into: &projectLockEntries)
+        }
+    }
+
+    /// Read `<project>/skills-lock.json` and add its entries to the lookup
+    /// map keyed by canonical resolved SKILL.md path
+    /// (`<project>/.agents/skills/<name>/SKILL.md` with symlinks resolved) —
+    /// the same shape produced by `canonicalResolvedPath` for scanned skills.
+    private static func collectProjectLockEntries(
+        projectURL: URL,
+        into lockEntries: inout [String: LockfileService.Entry]
+    ) {
+        let entries = LockfileService.loadProject(projectURL)
+        guard !entries.isEmpty else { return }
+        let agentsSkillsDir = projectURL.appendingPathComponent(".agents/skills")
+        for (name, entry) in entries {
+            let canonical = agentsSkillsDir
+                .appendingPathComponent("\(name)/SKILL.md")
+                .resolvingSymlinksInPath()
+                .path
+            lockEntries[canonical] = entry
         }
     }
 
@@ -485,7 +522,10 @@ final class SkillScanner {
 
     /// Apply collected results to SwiftData. Must be called on main thread.
     @MainActor
-    private func applyResults(_ results: [ScannedSkillData]) {
+    private func applyResults(
+        _ results: [ScannedSkillData],
+        projectLockEntries: [String: LockfileService.Entry] = [:]
+    ) {
         let groupedResults = Dictionary(grouping: results, by: \.resolvedPath)
         let descriptor = FetchDescriptor<Skill>()
         let allSkills = (try? modelContext.fetch(descriptor)) ?? []
@@ -493,10 +533,12 @@ final class SkillScanner {
         let existingByResolved = Dictionary(uniqueKeysWithValues: localSkills.map { ($0.resolvedPath, $0) })
         let scannedResolvedPaths = Set(groupedResults.keys)
 
-        // Lock entries keyed by the canonical `~/.agents/skills/<name>/SKILL.md` path
-        // — the same value that ends up as a skill's resolvedPath when the CLI
-        // installs it. Looked up once; applied during the upsert below.
+        // Lock entries keyed by the canonical `<scope>/.agents/skills/<name>/SKILL.md`
+        // path — the same value that ends up as a skill's resolvedPath when
+        // the CLI installs it. Global and project keys live under different
+        // roots, so a project entry never shadows a global one.
         let lockByCanonicalPath = lockEntriesByCanonicalPath()
+            .merging(projectLockEntries) { _, project in project }
 
         for (resolvedPath, installations) in groupedResults {
             guard let primary = installations.first else { continue }
@@ -575,10 +617,23 @@ final class SkillScanner {
 
     private func applyLockMetadata(_ entry: LockfileService.Entry?, to skill: Skill) {
         skill.lockSource = entry?.source
-        skill.sourceURL = entry?.sourceUrl
+        skill.sourceURL = entry?.sourceUrl ?? entry.flatMap(Self.derivedSourceURL(for:))
         skill.lockInstalledAt = entry?.installedAt
         skill.lockUpdatedAt = entry?.updatedAt
         skill.lockHash = entry?.skillFolderHash
+    }
+
+    /// Project lock files omit `sourceUrl`; derive a GitHub URL from a
+    /// `source` shorthand like `owner/repo` so the Source row in the header
+    /// still renders. Returns nil for non-github sourceTypes or sources that
+    /// aren't recognisable shorthand (full URLs, local paths, …).
+    private static func derivedSourceURL(for entry: LockfileService.Entry) -> String? {
+        guard entry.sourceType?.lowercased() == "github",
+              let source = entry.source,
+              !source.contains("://"),
+              source.split(separator: "/").count == 2
+        else { return nil }
+        return "https://github.com/\(source)"
     }
 
     // MARK: - Remote Server Scanning

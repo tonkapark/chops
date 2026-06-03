@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import CryptoKit
 
 /// Polls GitHub Trees API to determine whether a managed skill's upstream
 /// folder has moved past its installed `skillFolderHash`. Matches the CLI's
@@ -48,22 +49,71 @@ enum UpdateChecker {
     /// file and refreshes `lockHash`, so external lock edits (manual or by
     /// another `npx skills` run while Chops was unfocused) are visible at
     /// check time without depending on FileWatcher debounce timing.
+    ///
+    /// Each skill's lock entry is read from its own scope: global skills
+    /// from `~/.agents/.skill-lock.json`, project skills from
+    /// `<project>/skills-lock.json`. Lock files are cached per refresh so
+    /// each is read at most once.
     private static func refresh(source: String, skills: [Skill]) async {
-        let lockEntries = LockfileService.loadGlobal()
         guard let tree = await fetchTree(ownerRepo: source) else {
             stamp(skills: skills, hash: nil)
             return
         }
+        var cache = LockEntryCache()
+        var blobCache: [String: Data] = [:]
         for skill in skills {
-            let lockKey = URL(fileURLWithPath: skill.resolvedPath)
-                .deletingLastPathComponent()
-                .lastPathComponent
-            guard let entry = lockEntries[lockKey],
+            guard let entry = cache.entry(for: skill),
                   let path = entry.skillPath
             else { continue }
             skill.lockHash = entry.skillFolderHash
-            skill.upstreamHash = folderSHA(in: tree, for: path)
-            skill.lastUpstreamCheckedAt = Date()
+            switch entry.hashKind {
+            case .treeSHA:
+                skill.upstreamHash = folderSHA(in: tree, for: path)
+                skill.lastUpstreamCheckedAt = Date()
+            case .contentSHA:
+                // Mirror the CLI's `computeSkillFolderHash`: SHA-256 over
+                // (relativePath | content) for every blob in the folder,
+                // sorted by relativePath. Any blob fetch failure ⇒ leave
+                // upstreamHash untouched and skip the timestamp so the
+                // next check retries instead of burning the staleness
+                // window on a partial result.
+                if let hash = await computeContentHash(
+                    in: tree,
+                    ownerRepo: source,
+                    skillPath: path,
+                    blobCache: &blobCache
+                ) {
+                    skill.upstreamHash = hash
+                    skill.lastUpstreamCheckedAt = Date()
+                }
+            case .none:
+                skill.lastUpstreamCheckedAt = Date()
+            }
+        }
+    }
+
+    /// Resolves a skill to its lock entry by inferring the lock-file scope
+    /// from `resolvedPath`. `resolvedPath` is always
+    /// `<scope>/.agents/skills/<name>/SKILL.md` — `<scope> == ~` ⇒ global,
+    /// otherwise project. Memoises each lock-file read.
+    private struct LockEntryCache {
+        private var global: [String: LockfileService.Entry]?
+        private var byProject: [String: [String: LockfileService.Entry]] = [:]
+
+        mutating func entry(for skill: Skill) -> LockfileService.Entry? {
+            guard let scope = skill.lockScopeDir else { return nil }
+            let lockKey = URL(fileURLWithPath: skill.resolvedPath)
+                .deletingLastPathComponent()
+                .lastPathComponent
+
+            if scope.path == NSHomeDirectory() {
+                if global == nil { global = LockfileService.loadGlobal() }
+                return global?[lockKey]
+            }
+            if byProject[scope.path] == nil {
+                byProject[scope.path] = LockfileService.loadProject(scope)
+            }
+            return byProject[scope.path]?[lockKey]
         }
     }
 
@@ -136,6 +186,97 @@ enum UpdateChecker {
 
         if folder.isEmpty { return tree.sha }
         return tree.tree.first(where: { $0.type == "tree" && $0.path == folder })?.sha
+    }
+
+    // MARK: - Content hash (project lock parity)
+
+    /// Replicates `computeSkillFolderHash` from
+    /// `vercel-labs/skills/src/local-lock.ts`: SHA-256 over the sorted
+    /// `relativePath | contents` of every blob in the skill folder
+    /// (excluding `.git/` and `node_modules/`). Returns nil if any blob
+    /// fetch fails so the caller can retry on the next check instead of
+    /// recording a partial digest.
+    ///
+    /// `blobCache` is shared across skills in one refresh — if two skills
+    /// in the same repo happen to include the same blob, we only fetch it
+    /// once.
+    private static func computeContentHash(
+        in tree: RepoTree,
+        ownerRepo: String,
+        skillPath: String,
+        blobCache: inout [String: Data]
+    ) async -> String? {
+        var folder = skillPath.replacingOccurrences(of: "\\", with: "/")
+        let lower = folder.lowercased()
+        if lower.hasSuffix("/skill.md") {
+            folder = String(folder.dropLast("/skill.md".count))
+        } else if lower.hasSuffix("skill.md") {
+            folder = String(folder.dropLast("skill.md".count))
+        }
+        if folder.hasSuffix("/") { folder.removeLast() }
+
+        let prefix = folder.isEmpty ? "" : folder + "/"
+        let blobs = tree.tree.filter { entry in
+            guard entry.type == "blob" else { return false }
+            guard prefix.isEmpty || entry.path.hasPrefix(prefix) else { return false }
+            let relative = String(entry.path.dropFirst(prefix.count))
+            let segments = relative.split(separator: "/").map(String.init)
+            return !segments.contains(".git") && !segments.contains("node_modules")
+        }
+        guard !blobs.isEmpty else { return nil }
+
+        var entries: [(relativePath: String, content: Data)] = []
+        entries.reserveCapacity(blobs.count)
+        for blob in blobs {
+            let content: Data
+            if let cached = blobCache[blob.sha] {
+                content = cached
+            } else if let fetched = await fetchBlobContent(ownerRepo: ownerRepo, sha: blob.sha) {
+                blobCache[blob.sha] = fetched
+                content = fetched
+            } else {
+                return nil
+            }
+            let relative = String(blob.path.dropFirst(prefix.count))
+            entries.append((relative, content))
+        }
+
+        // Node's `Array#sort((a,b) => a.localeCompare(b))` does locale-aware,
+        // case-insensitive primary comparison (so `r…` < `S…`). The
+        // closest Foundation equivalent is `localizedStandardCompare`.
+        entries.sort {
+            $0.relativePath.localizedStandardCompare($1.relativePath) == .orderedAscending
+        }
+
+        var hasher = SHA256()
+        for entry in entries {
+            hasher.update(data: Data(entry.relativePath.utf8))
+            hasher.update(data: entry.content)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Fetches a blob's raw bytes via the Git Blobs API. The response is
+    /// `{ content: <base64>, encoding: "base64", … }`; the API may insert
+    /// newlines in the base64 string, which we strip before decoding.
+    private static func fetchBlobContent(ownerRepo: String, sha: String) async -> Data? {
+        guard let url = URL(string: "https://api.github.com/repos/\(ownerRepo)/git/blobs/\(sha)")
+        else { return nil }
+
+        var request = URLRequest(url: url)
+        request.setValue("application/vnd.github.v3+json", forHTTPHeaderField: "Accept")
+        request.setValue("chops", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 10
+
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse,
+              http.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = json["content"] as? String,
+              (json["encoding"] as? String) == "base64"
+        else { return nil }
+
+        return Data(base64Encoded: content, options: .ignoreUnknownCharacters)
     }
 }
 
