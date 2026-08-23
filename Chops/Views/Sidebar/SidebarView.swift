@@ -26,7 +26,7 @@ struct SidebarView: View {
 
         List(selection: $appState.sidebarFilter) {
 
-            Section {            
+            Section {
                 Label("Library", systemImage: "doc.text")
                     .badge(allSkills.count)
                     .tag(SidebarFilter.allSkills)
@@ -34,7 +34,7 @@ struct SidebarView: View {
                 Label("Favorites", systemImage: "star")
                     .badge(allSkills.filter(\.isFavorite).count)
                     .tag(SidebarFilter.favorites)
-          
+
                 ForEach(activeSources) { tool in
                     Label {
                         Text(tool.displayName)
@@ -109,7 +109,7 @@ struct SidebarView: View {
                 } label: {
                     Label("Discovery", systemImage: "safari")
                 }
-                .buttonStyle(.plain)               
+                .buttonStyle(.plain)
             }
         }
         .listStyle(.sidebar)
