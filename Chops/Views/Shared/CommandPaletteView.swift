@@ -22,8 +22,12 @@ struct CommandPaletteView: View {
 
     private var commands: [PaletteCommand] {
         var result: [PaletteCommand] = [
-            PaletteCommand(title: "Library", subtitle: nil, systemImage: "doc.text",
+            PaletteCommand(title: "Skills", subtitle: nil, systemImage: "doc.text",
                            tool: nil, category: "Navigate", action: .navigate(.allSkills)),
+            PaletteCommand(title: "Agents", subtitle: nil, systemImage: "person.crop.rectangle",
+                           tool: nil, category: "Navigate", action: .navigate(.allAgents)),
+            PaletteCommand(title: "Rules", subtitle: nil, systemImage: "list.bullet.rectangle",
+                           tool: nil, category: "Navigate", action: .navigate(.allRules)),
             PaletteCommand(title: "Favorites", subtitle: nil, systemImage: "star",
                            tool: nil, category: "Navigate", action: .navigate(.favorites)),
         ]

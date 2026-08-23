@@ -5,8 +5,7 @@
 - Browse Skills now opens to a Trending list of popular skills
 - Faster, broader skill search with an Official-only filter
 - New ⌘K command palette to jump to any tool's library, browse the registry, or create a skill/agent/rule
-- Simplified sidebar: a single unified Library, a Discovery entry, and a cleaner tool list
-- Added keyboard shortcuts: ⌘B to toggle the sidebar and ⌘⇧L to jump to Library
+- Added keyboard shortcuts: ⌘B to toggle the sidebar and ⌘⇧L to jump to Skills
 
 ## [1.15.0] - 2026-04-28
 

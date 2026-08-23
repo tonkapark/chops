@@ -23,7 +23,7 @@ sheet it opens.
 ### Commands shown
 
 **Navigate** — switches the sidebar selection / list view:
-- **Library** — all items (skills, agents, and rules together)
+- **Skills**, **Agents**, **Rules** — each library section
 - **Favorites** — items marked favorite
 - **One row per tool** that currently has items — e.g. Global, Claude Code,
   Cursor, Codex, OpenCode — each jumps to that tool's library. Tools with no
@@ -44,7 +44,7 @@ sheet it opens.
 |----------|--------|
 | ⌘K | Open the command palette |
 | ⌘B | Toggle the sidebar |
-| ⌘⇧L | Go to Library |
+| ⌘⇧L | Go to Skills |
 | ⌘S | Save the current skill (disabled when nothing is selected) |
 | ⌘, | Open Settings |
 

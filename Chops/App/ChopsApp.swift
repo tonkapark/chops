@@ -45,7 +45,7 @@ struct ChopsApp: App {
                 }
                 .keyboardShortcut("b", modifiers: .command)
 
-                Button("Go to Library") {
+                Button("Go to Skills") {
                     appState.sidebarFilter = .allSkills
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
