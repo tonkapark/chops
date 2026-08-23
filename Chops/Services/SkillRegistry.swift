@@ -2,6 +2,10 @@ import Foundation
 
 @Observable
 final class SkillRegistry {
+    /// One instance for the app so the trending and GitHub caches last the session,
+    /// not just a single sheet presentation.
+    static let shared = SkillRegistry()
+
     var isSearching = false
     var searchError: String?
 
@@ -9,22 +13,8 @@ final class SkillRegistry {
     private var treeCache: [String: [String]] = [:] // source@branch -> [SKILL.md paths]
     private var branchCache: [String: String] = [:] // source -> default branch
 
-    // Popular/trending skills, scraped from skills.sh. Cached in memory process-wide
-    // (static, so it survives sheet re-presentations) and on disk, both with a TTL,
-    // so it survives app relaunches without re-scraping.
-    private static var trendingCache: (skills: [RegistrySkill], fetchedAt: Date)?
-
-    private static let trendingTTL: TimeInterval = 6 * 60 * 60 // 6 hours
-
-    private struct TrendingDiskCache: Codable {
-        let fetchedAt: Date
-        let skills: [RegistrySkill]
-    }
-
-    private static var trendingCacheURL: URL {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return support.appendingPathComponent("Chops/trending-cache.json")
-    }
+    // Popular/trending skills, scraped from skills.sh. Cached in memory for the session.
+    private var trendingCache: [RegistrySkill]?
 
     // MARK: - Search
 
@@ -77,18 +67,7 @@ final class SkillRegistry {
     /// ranked by install count — is cached for the session and powers instant local
     /// browse + filtering, which is both faster and broader than the fuzzy search API.
     func fetchTrending() async throws -> [RegistrySkill] {
-        if let cached = Self.trendingCache,
-           Date().timeIntervalSince(cached.fetchedAt) < Self.trendingTTL {
-            return cached.skills
-        }
-
-        // Reuse a fresh on-disk cache so trending shows instantly on relaunch and we
-        // don't re-scrape skills.sh on every cold start.
-        if let disk = Self.readTrendingDiskCache(),
-           Date().timeIntervalSince(disk.fetchedAt) < Self.trendingTTL {
-            Self.trendingCache = (disk.skills, disk.fetchedAt)
-            return disk.skills
-        }
+        if let cached = trendingCache { return cached }
 
         var request = URLRequest(url: URL(string: "https://www.skills.sh/trending")!)
         // Identify ourselves honestly since we're reading their HTML rather than a JSON API.
@@ -100,71 +79,44 @@ final class SkillRegistry {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200,
               let html = String(data: data, encoding: .utf8) else {
-            throw RegistryError.searchFailed
+            throw RegistryError.trendingFailed
         }
 
         let skills = Self.parseTrending(html: html)
-        guard !skills.isEmpty else {
-            AppLogger.scanning.error("Trending scrape parsed 0 skills — skills.sh markup likely changed")
-            throw RegistryError.searchFailed
-        }
-        Self.trendingCache = (skills, Date())
-        Self.writeTrendingDiskCache(skills)
+        guard !skills.isEmpty else { throw RegistryError.trendingFailed }
+        trendingCache = skills
         return skills
-    }
-
-    private static func readTrendingDiskCache() -> TrendingDiskCache? {
-        guard let data = try? Data(contentsOf: trendingCacheURL) else { return nil }
-        return try? JSONDecoder().decode(TrendingDiskCache.self, from: data)
-    }
-
-    private static func writeTrendingDiskCache(_ skills: [RegistrySkill]) {
-        let cache = TrendingDiskCache(fetchedAt: Date(), skills: skills)
-        guard let data = try? JSONEncoder().encode(cache) else { return }
-        let url = trendingCacheURL
-        try? FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        try? data.write(to: url, options: .atomic)
     }
 
     /// Extracts skill objects from the Next.js RSC payload embedded in the trending HTML.
     /// The payload lives inside JS string literals, so JSON quotes arrive as `\"`; we
-    /// unescape, then pull out each `{"source":…,"skillId":…,"installs":…}` object and
-    /// decode it. Page order is install-count descending, which we preserve.
+    /// unescape, then pull out every flat `{…"skillId":…}` object and hand it to
+    /// JSONDecoder, which tolerates extra keys and any key order. Page order is
+    /// install-count descending, which we preserve.
     static func parseTrending(html: String) -> [RegistrySkill] {
         let unescaped = html.replacingOccurrences(of: "\\\"", with: "\"")
-        let pattern = #/\{"source":"[^"]*","skillId":"[^"]*","name":"[^"]*","installs":\d+(?:,"isOfficial":(?:true|false))?\}/#
+        let pattern = #/\{[^{}]*"skillId":[^{}]*\}/#
 
         let decoder = JSONDecoder()
         var seen = Set<String>()
         var result: [RegistrySkill] = []
-        var dropped = 0
         for match in unescaped.matches(of: pattern) {
             let json = String(match.output)
-            guard let skill = try? decoder.decode(RegistrySkill.self, from: Data(json.utf8)) else {
-                dropped += 1
-                continue
-            }
+            guard let skill = try? decoder.decode(RegistrySkill.self, from: Data(json.utf8)) else { continue }
             if seen.insert(skill.id).inserted {
                 result.append(skill)
             }
-        }
-        if dropped > 0 {
-            AppLogger.scanning.warning("Trending: dropped \(dropped) unparseable skill fragment(s)")
         }
         return result
     }
 
     /// Case-insensitive substring match across name, skillId, and source.
     static func filter(_ skills: [RegistrySkill], query: String) -> [RegistrySkill] {
-        let q = query.lowercased()
-        guard !q.isEmpty else { return skills }
+        guard !query.isEmpty else { return skills }
         return skills.filter {
-            $0.name.lowercased().contains(q)
-                || $0.skillId.lowercased().contains(q)
-                || $0.source.lowercased().contains(q)
+            $0.name.localizedCaseInsensitiveContains(query)
+                || $0.skillId.localizedCaseInsensitiveContains(query)
+                || $0.source.localizedCaseInsensitiveContains(query)
         }
     }
 
@@ -358,6 +310,7 @@ final class SkillRegistry {
 
     enum RegistryError: LocalizedError {
         case searchFailed
+        case trendingFailed
         case treeFetchFailed
         case rateLimited
         case skillNotFound
@@ -367,6 +320,7 @@ final class SkillRegistry {
         var errorDescription: String? {
             switch self {
             case .searchFailed: "Search request failed"
+            case .trendingFailed: "Could not load trending skills from skills.sh"
             case .treeFetchFailed: "Could not fetch repository contents"
             case .rateLimited: "GitHub API rate limit reached — try again in a few minutes"
             case .skillNotFound: "File not found in repository"

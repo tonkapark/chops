@@ -2,7 +2,7 @@ import SwiftUI
 
 struct RegistrySheet: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var registry = SkillRegistry()
+    private let registry = SkillRegistry.shared
     @State private var searchText = ""
     @State private var results: [SkillRegistry.RegistrySkill] = []
     @State private var trending: [SkillRegistry.RegistrySkill] = []
@@ -24,20 +24,21 @@ struct RegistrySheet: View {
         AgentTarget.installed
     }
 
+    private var isBrowsing: Bool { searchText.count < 2 }
+
     /// What the list renders: trending when idle, locally-filtered trending plus any
     /// long-tail API hits when searching. Local matches come first (they're the popular
-    /// ones), API extras fill in skills that aren't in the trending set.
+    /// ones), API extras fill in skills that aren't in the trending set. The Official
+    /// filter only applies while browsing: the search API doesn't report `isOfficial`,
+    /// so filtering search results would silently drop every long-tail hit.
     private var visibleSkills: [SkillRegistry.RegistrySkill] {
-        let base: [SkillRegistry.RegistrySkill]
-        if searchText.count < 2 {
-            base = trending
-        } else {
-            let local = SkillRegistry.filter(trending, query: searchText)
-            let localIDs = Set(local.map(\.id))
-            let extra = results.filter { !localIDs.contains($0.id) }
-            base = local + extra
+        if isBrowsing {
+            return officialOnly ? trending.filter { $0.isOfficial == true } : trending
         }
-        return officialOnly ? base.filter { $0.isOfficial == true } : base
+        let local = SkillRegistry.filter(trending, query: searchText)
+        let localIDs = Set(local.map(\.id))
+        let extra = results.filter { !localIDs.contains($0.id) }
+        return local + extra
     }
 
     var body: some View {
@@ -121,15 +122,17 @@ struct RegistrySheet: View {
 
             // Browse header: section label + Official filter toggle
             HStack {
-                Text(searchText.count < 2 ? "Trending" : "Results")
+                Text(isBrowsing ? "Trending" : "Results")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Toggle("Official only", isOn: $officialOnly)
-                    .toggleStyle(.checkbox)
-                    .font(.caption)
-                    .controlSize(.small)
+                if isBrowsing {
+                    Toggle("Official only", isOn: $officialOnly)
+                        .toggleStyle(.checkbox)
+                        .font(.caption)
+                        .controlSize(.small)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
@@ -137,31 +140,22 @@ struct RegistrySheet: View {
             Divider()
 
             // Results
-            if isLoadingTrending && trending.isEmpty && searchText.count < 2 {
+            if isBrowsing && isLoadingTrending {
                 Spacer()
                 ProgressView("Loading popular skills…")
                 Spacer()
-            } else if visibleSkills.isEmpty && searchText.count >= 2 && !isSearching {
+            } else if isBrowsing, trending.isEmpty, let trendingError {
+                ContentUnavailableView {
+                    Label("Trending Unavailable", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(trendingError)
+                } actions: {
+                    Button("Retry") { Task { await loadTrending() } }
+                }
+                .frame(maxHeight: .infinity)
+            } else if visibleSkills.isEmpty && !isSearching {
                 ContentUnavailableView.search(text: searchText)
                     .frame(maxHeight: .infinity)
-            } else if trendingError != nil && trending.isEmpty && searchText.count < 2 {
-                ContentUnavailableView {
-                    Label("Couldn't load trending skills", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text("Check your connection, or search the registry directly.")
-                } actions: {
-                    Button("Retry") {
-                        Task { await loadTrending() }
-                    }
-                }
-                .frame(maxHeight: .infinity)
-            } else if visibleSkills.isEmpty {
-                ContentUnavailableView {
-                    Label("Search the Skills Registry", systemImage: "globe")
-                } description: {
-                    Text("Find and install skills from the open agent skills ecosystem.")
-                }
-                .frame(maxHeight: .infinity)
             } else {
                 List(visibleSkills) { skill in
                     Button {
@@ -342,7 +336,6 @@ struct RegistrySheet: View {
         guard trending.isEmpty else { return }
         isLoadingTrending = true
         trendingError = nil
-        // Search stays available even if trending fails; surface the failure explicitly.
         do {
             trending = try await registry.fetchTrending()
         } catch {
