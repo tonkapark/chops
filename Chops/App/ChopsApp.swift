@@ -1,7 +1,6 @@
 import SwiftUI
 import SwiftData
 import Sparkle
-import AppKit
 
 @main
 struct ChopsApp: App {
@@ -40,8 +39,6 @@ struct ChopsApp: App {
         .modelContainer(sharedModelContainer)
         .commands {
             TextEditingCommands()
-            // Chops is a single-window app — drop the "New Window" command.
-            CommandGroup(replacing: .newItem) { }
             CommandGroup(after: .sidebar) {
                 Button("Toggle Sidebar") {
                     NotificationCenter.default.post(name: .toggleSidebar, object: nil)
@@ -60,21 +57,12 @@ struct ChopsApp: App {
 
                 Divider()
             }
-            // Replacing (not after) .saveItem drops SwiftUI's default Close/Close All
-            // from the File menu; Close lives in the Window menu instead (below).
             CommandGroup(replacing: .saveItem) {
                 Button("Save") {
                     NotificationCenter.default.post(name: .saveCurrentSkill, object: nil)
                 }
                 .keyboardShortcut("s", modifiers: .command)
                 .disabled(appState.selectedSkill == nil)
-            }
-            // Close Window in the Window menu, next to "Remove Window from Set".
-            CommandGroup(after: .windowSize) {
-                Button("Close Window") {
-                    NSApp.keyWindow?.performClose(nil)
-                }
-                .keyboardShortcut("w", modifiers: .command)
             }
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)

@@ -53,8 +53,7 @@ sheet). It is provided automatically by SwiftUI's `Settings` scene and listed as
 **Settings…** under the **Chops** app menu — no custom binding is needed. The
 window opens with the section tab bar focused, so **← / →** switch sections
 (General, Library, AI Assist, Scan Directories, Servers, About) without reaching
-for the mouse. Close it the standard macOS way — **⌘W** or the window's close
-button (not ⎋, which is reserved for modal sheets).
+for the mouse.
 
 Standard macOS text-editing shortcuts (⌘C/⌘V/⌘Z, etc.) apply in the editor.
 
