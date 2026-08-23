@@ -184,8 +184,12 @@ struct RegistrySheet: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    // Match the Trending/Official-only header's 20pt gutters.
+                    .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
                 }
                 .listStyle(.plain)
+                // Keep the last row clear of the sheet's rounded bottom corners.
+                .contentMargins(.bottom, 12, for: .scrollContent)
             }
 
             if let error {

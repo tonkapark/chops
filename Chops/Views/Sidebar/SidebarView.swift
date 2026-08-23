@@ -41,6 +41,14 @@ struct SidebarView: View {
                 Label("Favorites", systemImage: "star")
                     .badge(allSkills.filter(\.isFavorite).count)
                     .tag(SidebarFilter.favorites)
+
+                // Opens the registry sheet; not a selectable filter.
+                Button {
+                    appState.showingRegistrySheet = true
+                } label: {
+                    Label("Discovery", systemImage: "safari")
+                }
+                .buttonStyle(.plain)
             }
 
             Section("Tools") {
