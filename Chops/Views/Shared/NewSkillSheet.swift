@@ -160,7 +160,11 @@ struct NewSkillSheet: View {
             modelContext.insert(skill)
             try modelContext.save()
 
-            appState.sidebarFilter = .allSkills
+            switch itemKind {
+            case .skill: appState.sidebarFilter = .allSkills
+            case .agent: appState.sidebarFilter = .allAgents
+            case .rule: appState.sidebarFilter = .allRules
+            }
             appState.selectedSkill = skill
             dismiss()
         } catch {

@@ -33,7 +33,11 @@ struct SkillListView: View {
 
         switch appState.sidebarFilter {
         case .allSkills:
-            break   // unified list — all item kinds
+            result = result.filter { $0.itemKind == .skill }
+        case .allAgents:
+            result = result.filter { $0.itemKind == .agent }
+        case .allRules:
+            result = result.filter { $0.itemKind == .rule }
         case .favorites:
             result = result.filter { $0.isFavorite }
         case .tool(let tool):
@@ -62,7 +66,9 @@ struct SkillListView: View {
 
     private var title: String {
         switch appState.sidebarFilter {
-        case .allSkills: "Library"
+        case .allSkills: "Skills"
+        case .allAgents: "Agents"
+        case .allRules: "Rules"
         case .favorites: "Favorites"
         case .tool(let tool): tool.displayName
         case .collection(let name): name
@@ -74,6 +80,7 @@ struct SkillListView: View {
     /// Whether the current filter shows mixed item types (skills and agents together)
     private var showsTypeBadge: Bool {
         switch appState.sidebarFilter {
+        case .allSkills, .allAgents, .allRules: false
         case .tool: appState.toolKindFilter == nil
         default: true
         }
@@ -94,8 +101,17 @@ struct SkillListView: View {
                 description: Text("No \(kind.displayName.lowercased()) match the current filter.")
             )
         } else {
-            ContentUnavailableView("No Items", systemImage: "doc.text",
-                description: Text("No items match the current filter."))
+            switch appState.sidebarFilter {
+            case .allAgents:
+                ContentUnavailableView("No Agents", systemImage: "person.crop.rectangle",
+                    description: Text("No agents match the current filter."))
+            case .allRules:
+                ContentUnavailableView("No Rules", systemImage: "list.bullet.rectangle",
+                    description: Text("No rules match the current filter."))
+            default:
+                ContentUnavailableView("No Skills", systemImage: "doc.text",
+                    description: Text("No skills match the current filter."))
+            }
         }
     }
 
